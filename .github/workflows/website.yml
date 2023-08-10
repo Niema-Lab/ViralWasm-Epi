@@ -27,9 +27,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./website
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -38,7 +35,7 @@ jobs:
         with:
           node-version: 18
           cache: 'npm'
-          cache-dependency-path: ./website/package-lock.json
+          cache-dependency-path: ./package-lock.json
       - name: Install dependencies
         run: npm install
       - name: Build
@@ -49,7 +46,7 @@ jobs:
         uses: actions/upload-pages-artifact@v1
         with:
           # Upload dist repository
-          path: './website/dist'
+          path: './dist'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v1
