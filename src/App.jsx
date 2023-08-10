@@ -148,12 +148,18 @@ export class App extends Component {
 	render() {
 		return (
 			<div className="root">
-				<h2 className="my-5 text-center" id="site-title">{this.state.siteTitle}</h2>
+				<h2 className="mt-5 mb-2 text-center" id="site-title">{this.state.siteTitle}</h2>
+				<p className="text-center my-3">
+					WebAssembly implementation of <a href="https://www.github.com/niemasd/ViralMSA" target="_blank"
+						rel="noreferrer">ViralMSA</a>.<br />
+					Created by Daniel Ji, UCSD Undergraduate Student Researcher for Professor <a href="https://www.niema.net"
+						target="_blank" rel="noreferrer">Niema Moshiri</a>
+				</p>
 				<div id="loading" className={this.state.siteReady ? 'd-none' : ''}>
 					<h4 className="text-center me-2">Loading </h4>
 					<img id="site-loading-circle" className="loading-circle" src={loadingCircle} alt="loading" />
 				</div>
-				<div id="content" className={`${this.state.siteReady ? '' : 'd-none'} mt-5`}>
+				<div id="content" className={`${this.state.siteReady ? '' : 'd-none'} mt-3`}>
 					<div className="input">
 						<h5 className="w-100 text-start mb-3">Input</h5>
 						<div id="ref-seq-container">
@@ -203,12 +209,6 @@ export class App extends Component {
 						</div>
 					</div>
 				</div>
-				<footer className="text-center my-4">
-					WebAssembly implementation of <a href="https://www.github.com/niemasd/ViralMSA" target="_blank"
-						rel="noreferrer">ViralMSA</a>.<br />
-					Created by Daniel Ji, UCSD Undergraduate Student Researcher for Professor <a href="https://www.niema.net"
-						target="_blank" rel="noreferrer">Niema Moshiri</a>
-				</footer>
 			</div>
 		)
 	}
