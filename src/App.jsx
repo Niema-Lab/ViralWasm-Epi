@@ -21,13 +21,23 @@ export class App extends Component {
 		this.state = {
 			REFS: undefined,
 			REF_NAMES: undefined,
-			refGenomes: new Set(),
-			preloadRefOptions: undefined,
 
 			exampleInput: undefined,
 			useExampleInput: false,
+			inputFile: undefined,
+
+			refGenomes: new Set(),
+			preloadRefOptions: undefined,
+			preloadedRef: undefined,
+
+			refFile: undefined,
+
+			omitRef: false,
 
 			startTime: new Date().getTime(),
+			timeElapsed: undefined,
+			running: false,
+			done: false,
 
 			siteTitle: "ViralMSA",
 			siteReady: false,
@@ -98,6 +108,7 @@ export class App extends Component {
 	handleViralMSAMessage = (event) => {
 		if (event.data.error) {
 			// error handling
+			this.setState({ running: false, done: false, timeElapsed: undefined })
 			alert(event.data.error);
 		} else if (event.data.init) {
 			// done loading pyodide / ViralMSA 
@@ -107,18 +118,15 @@ export class App extends Component {
 			// download results
 			for (const download of event.data.download) {
 				// first element of array is filename, second element is content
-				downloadFile(download[0], download[1])
+				LOG(`Downloading ${download[0]}`)
+				this.downloadFile(download[0], download[1])
 			}
 		} else if (event.data.pyodideConsole) {
 			// updating console
-			// TODO: is this correct output format?
 			LOG(event.data.pyodideConsole)
 		} else if (event.data.finished) {
 			// on ViralMSA finish
-			// TODO: refactor into react state
-			document.getElementById("duration-text").innerText = "Total runtime: " + (new Date().getTime() - startTime) / 1000 + " seconds";
-			document.getElementById("running-loading-circle").classList.add("d-none");
-			document.getElementById("downloadResults").disabled = false;
+			this.setState({ done: true, timeElapsed: (new Date().getTime() - startTime) / 1000 })
 		} else if (event.data.runminimap2) {
 			// Pyodide call to run minimap2 
 			if (event.data.runminimap2 === 'alignment') {
@@ -145,37 +153,82 @@ export class App extends Component {
 		}
 	}
 
+	setInputFile = (event) => {
+		this.setState({ useExampleInput: false, inputFile: event.target.files[0] })
+	}
+
+	setPreloadedRef = (event) => {
+		this.setState({ preloadedRef: event.target.value === 'undefined' ? undefined : event.target.value, })
+	}
+
+	setRefFile = (event) => {
+		this.setState({ refFile: event.target.files[0] })
+	}
+
+	clearRefFile = () => {
+		this.setState({ refFile: undefined })
+		document.getElementById('ref-sequence').value = null;
+	}
+
+	toggleOmitRef = () => {
+		this.setState(prevState => ({ omitRef: !prevState.omitRef }))
+	}
+
+	toggleExampleData = () => {
+		this.setState(prevState => ({ useExampleInput: !prevState.useExampleInput }))
+	}
+
+	downloadResults = () => {
+		viralMSAWorker.postMessage({ 'getResults': 'all' });
+	}
+
+	downloadFile = (filename, text) => {
+		var a = document.createElement('a');
+		a.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+		a.setAttribute('download', filename);
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+	}
+
 	render() {
 		return (
 			<div className="root">
-				<h2 className="mt-5 mb-2 text-center" id="site-title">{this.state.siteTitle}</h2>
+				<h2 className="mt-5 mb-2 text-center" >{this.state.siteTitle}</h2>
 				<p className="text-center my-3">
 					WebAssembly implementation of <a href="https://www.github.com/niemasd/ViralMSA" target="_blank"
 						rel="noreferrer">ViralMSA</a>.<br />
 					Created by Daniel Ji, UCSD Undergraduate Student Researcher for Professor <a href="https://www.niema.net"
 						target="_blank" rel="noreferrer">Niema Moshiri</a>
 				</p>
-				<div id="loading" className={this.state.siteReady ? 'd-none' : ''}>
-					<h4 className="text-center me-2">Loading </h4>
-					<img id="site-loading-circle" className="loading-circle" src={loadingCircle} alt="loading" />
+				<div id="loading" className={this.state.siteReady ? 'd-none' : 'mt-4'}>
+					<h5 className="text-center me-2">Loading </h5>
+					<img className="loading-circle" src={loadingCircle} alt="loading" />
 				</div>
-				<div id="content" className={`${this.state.siteReady ? '' : 'd-none'} mt-3`}>
+				<div id="content" className={`${this.state.siteReady ? '' : 'd-none'} mt-4`}>
 					<div className="input">
 						<h5 className="w-100 text-start mb-3">Input</h5>
 						<div id="ref-seq-container">
 							<div id="input-sequences-container" className="mb-3">
 								<label htmlFor="input-sequences" className="form-label">Input Sequences (FASTA Format)</label>
-								<input className="form-control" type="file" id="input-sequences" />
-								<p id="loaded-example-indicator" className="mt-2 d-none"><strong>Loaded Example Data: <a
-									href="https://raw.githubusercontent.com/niemasd/viralmsa/master/example/example_hiv.fas"
-									target="_blank" rel="noreferr
-						">example_hiv.fas</a></strong></p>
+								<input className="form-control" type="file" id="input-sequences" onChange={this.setInputFile} />
+								{this.state.useExampleInput &&
+									<p className="mt-2"><strong>Using Loaded Example Data: <a
+										href="https://raw.githubusercontent.com/niemasd/viralmsa/master/example/example_hiv.fas"
+										target="_blank" rel="noreferrer">example_hiv.fas</a></strong></p>
+								}
 							</div>
 
-							<label htmlFor="common-sequences" className="form-label mt-2">Select Preloaded Reference Sequence</label>
-							<select className="form-select" aria-label="Default select example" id="common-sequences">
-								{/* TODO: add default undefined and bind to react state */}
-								<option>Select a Reference Sequence</option>
+							<label htmlFor="common-sequences" className="form-label mt-2">
+								Select Preloaded Reference Sequence
+								{this.state.refFile !== undefined &&
+									<span className='mt-2 text-warning'>
+										<strong>&nbsp;(Warning: Using Uploaded Reference File)</strong>
+									</span>
+								}
+							</label>
+							<select className="form-select" aria-label="Default select example" id="common-sequences" value={this.state.preloadedRef} onChange={this.setPreloadedRef}>
+								<option value="undefined">Select a Reference Sequence</option>
 								{this.state.preloadRefOptions}
 							</select>
 
@@ -183,29 +236,38 @@ export class App extends Component {
 
 							<div>
 								<label htmlFor="ref-sequence" className="form-label">Upload Reference Sequence</label>
-								<input className="form-control" type="file" id="ref-sequence" />
+								<div className="input-group">
+									<input className="form-control" type="file" id="ref-sequence" onChange={this.setRefFile} aria-describedby="ref-sequence-addon" />
+									<button class="btn btn-outline-danger" type="button" id="ref-sequence-addon" onClick={this.clearRefFile}><i class="bi bi-trash"></i></button>
+								</div>
 							</div>
 
 							<div className="form-check mt-4">
-								<input className="form-check-input" type="checkbox" value="" id="omit-ref" />
+								<input className="form-check-input" type="checkbox" value="" id="omit-ref" checked={this.state.omitRef} onChange={this.toggleOmitRef} />
 								<label className="form-check-label" htmlFor="omit-ref">
 									Omit Reference Sequence from Output
 								</label>
 							</div>
 						</div>
 
-						<button type="button" className="mt-3 btn btn-warning w-100" id="loadExample">Load Example Data</button>
-						<button type="button" className="mt-3 btn btn-primary w-100" id="runViralMSA">Run ViralMSA</button>
+						<button type="button" className={`mt-3 w-100 btn ${this.state.useExampleInput ? 'btn-success' : 'btn-warning'}`} onClick={this.toggleExampleData}>
+							Load Example Data {this.state.useExampleInput ? '(Currently Using Example Data)' : ''}
+						</button>
+						<button type="button" className="mt-3 btn btn-primary w-100" onClick={this.runViralMSA}>Run ViralMSA</button>
 					</div>
 					<div className="output">
 						<h5 className="mb-3">Console</h5>
 						<textarea className="form-control" id="output-console" rows="3"></textarea>
-						<button type="button" className="mt-4 btn btn-primary w-100" id="downloadResults" disabled>Download
+						<button type="button" className="mt-4 btn btn-primary w-100" disabled={!this.state.done} onClick={this.state.downloadResults}>Download
 							Results</button>
 						<div id="duration">
-							<p id="duration-text" className="my-3"></p>
-							<img id="running-loading-circle" className="loading-circle d-none ms-2" src={loadingCircle}
-								alt="loading" />
+							{this.state.timeElapsed &&
+								<p id="duration-text" className="my-3">Total runtime: {this.state.timeElapsed} seconds</p>
+							}
+							{this.state.running && !this.state.done &&
+								<img id="running-loading-circle" className="loading-circle ms-2" src={loadingCircle}
+									alt="loading" />
+							}
 						</div>
 					</div>
 				</div>
