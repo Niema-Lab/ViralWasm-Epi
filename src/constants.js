@@ -11,7 +11,7 @@ export const CLEAR_LOG = () => {
 export const LOG = (output) => {
 	const textArea = document.getElementById(OUTPUT_ID);
 	const date = new Date();
-	textArea.value += `${getTimeWithMilliseconds(date)}: ` + output + "\n";
+	textArea.value += `${getTimeWithMilliseconds(date)}: ` + output;
 }
 
 export const getTimeWithMilliseconds = date => {

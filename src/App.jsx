@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React, { Component, Fragment } from 'react'
 
 import './App.scss'
 import loadingCircle from './assets/loading.png'
@@ -41,6 +41,8 @@ export class App extends Component {
 
 			siteTitle: "ViralMSA",
 			siteReady: false,
+
+			sharedArray: undefined,
 		}
 	}
 
@@ -53,11 +55,13 @@ export class App extends Component {
 		const sharedArray = new Int32Array(sharedArrayBuffer);
 		viralMSAWorker.postMessage({ 'arraybuffer': sharedArray })
 		minimap2Worker.postMessage({ 'arraybuffer': sharedArray })
+		this.setState({ sharedArray })
 
 		// Other initialization
 		this.getViralMSAVersion();
 		this.fetchPreloadedRef();
 		this.initPreloadedRefs();
+		this.fetchExampleInput();
 	}
 
 	getViralMSAVersion = async () => {
@@ -105,6 +109,12 @@ export class App extends Component {
 		}, 250)
 	}
 
+	fetchExampleInput = async () => {
+		this.setState({
+			exampleInput: await (await fetch("https://raw.githubusercontent.com/niemasd/viralmsa/master/example/example_hiv.fas")).text()
+		})
+	}
+
 	handleViralMSAMessage = (event) => {
 		if (event.data.error) {
 			// error handling
@@ -113,7 +123,7 @@ export class App extends Component {
 		} else if (event.data.init) {
 			// done loading pyodide / ViralMSA 
 			this.setState({ REFS: event.data.REFS, REF_NAMES: event.data.REF_NAMES })
-			LOG("ViralMSA Loaded.")
+			LOG("ViralMSA Loaded.\n")
 		} else if (event.data.download) {
 			// download results
 			for (const download of event.data.download) {
@@ -126,7 +136,7 @@ export class App extends Component {
 			LOG(event.data.pyodideConsole)
 		} else if (event.data.finished) {
 			// on ViralMSA finish
-			this.setState({ done: true, timeElapsed: (new Date().getTime() - startTime) / 1000 })
+			this.setState({ done: true, timeElapsed: (new Date().getTime() - this.state.startTime) / 1000 })
 		} else if (event.data.runminimap2) {
 			// Pyodide call to run minimap2 
 			if (event.data.runminimap2 === 'alignment') {
@@ -146,10 +156,10 @@ export class App extends Component {
 			const adjustedArray = new Uint8Array(Math.ceil(fileData.length / 4) * 4);
 			adjustedArray.set(fileData);
 			// update shared array buffer
-			sharedArray.set(new Uint32Array(adjustedArray.buffer), 0)
+			this.state.sharedArray.set(new Uint32Array(adjustedArray.buffer), 0)
 
 			// notify ViralMSA WebWorker that Minimap2 is done
-			Atomics.notify(sharedArray, 0);
+			Atomics.notify(this.state.sharedArray, 0);
 		}
 	}
 
@@ -178,6 +188,63 @@ export class App extends Component {
 		this.setState(prevState => ({ useExampleInput: !prevState.useExampleInput }))
 	}
 
+	runViralMSA = async () => {
+		// validation
+		if (!this.state.useExampleInput && this.state.inputFile === undefined) {
+			alert("Please upload an input sequence file.");
+			return;
+		}
+
+		if (this.state.preloadedRef === undefined && this.state.refFile === undefined) {
+			alert("Please upload or select a reference sequence file.");
+			return;
+		}
+
+		// validation passed
+		// clear console and runtime record
+		CLEAR_LOG();
+		this.setState({ running: true, done: false, timeElapsed: undefined, startTime: new Date().getTime() })
+
+		let inputSeq;
+		let refSeq;
+		let refIndex;
+		let refID;
+
+		// sending file data to webworker
+		LOG("Reading input sequence file...")
+		if (this.state.useExampleInput) {
+			inputSeq = this.state.exampleInput;
+		} else {
+			const inputSeqReader = new FileReader();
+			inputSeqReader.readAsText(this.state.inputFile, "UTF-8");
+			inputSeqReader.onload = (e) => {
+				inputSeq = e.target.result;
+			}
+		}
+
+		if (this.state.refFile) {
+			const refSeqReader = new FileReader();
+			refSeqReader.readAsText(this.state.refFile, "UTF-8");
+			refSeqReader.onload = (e) => {
+				refSeq = e.target.result;
+			}
+		} else {
+			// only need to provide refID when using a preloaded reference sequence and index
+			refID = this.state.preloadedRef;
+			// write reference index to minimap2 since it will never be built
+			refIndex = new Uint8Array(await (await fetch("https://raw.githubusercontent.com/niemasd/viralmsa/master/ref_genomes/" + refID + "/" + refID + ".fas.mmi")).arrayBuffer());
+			minimap2Worker.postMessage({ writeIndex: refIndex })
+		}
+
+		// wait until file data is read and then run ViralMSA
+		const interval = setInterval(() => {
+			if (inputSeq && (refSeq || refID)) {
+				clearInterval(interval);
+				viralMSAWorker.postMessage({ 'run': 'viralmsa', 'inputSeq': inputSeq, 'refSeq': refSeq, 'refID': refID, 'omitRef': this.state.omitRef });
+			}
+		}, 100);
+	}
+
 	downloadResults = () => {
 		viralMSAWorker.postMessage({ 'getResults': 'all' });
 	}
@@ -203,7 +270,7 @@ export class App extends Component {
 				</p>
 				<div id="loading" className={this.state.siteReady ? 'd-none' : 'mt-4'}>
 					<h5 className="text-center me-2">Loading </h5>
-					<img className="loading-circle" src={loadingCircle} alt="loading" />
+					<img className="loading-circle mb-2" src={loadingCircle} alt="loading" />
 				</div>
 				<div id="content" className={`${this.state.siteReady ? '' : 'd-none'} mt-4`}>
 					<div className="input">
@@ -238,7 +305,7 @@ export class App extends Component {
 								<label htmlFor="ref-sequence" className="form-label">Upload Reference Sequence</label>
 								<div className="input-group">
 									<input className="form-control" type="file" id="ref-sequence" onChange={this.setRefFile} aria-describedby="ref-sequence-addon" />
-									<button class="btn btn-outline-danger" type="button" id="ref-sequence-addon" onClick={this.clearRefFile}><i class="bi bi-trash"></i></button>
+									<button className="btn btn-outline-danger" type="button" id="ref-sequence-addon" onClick={this.clearRefFile}><i className="bi bi-trash"></i></button>
 								</div>
 							</div>
 
@@ -258,15 +325,18 @@ export class App extends Component {
 					<div className="output">
 						<h5 className="mb-3">Console</h5>
 						<textarea className="form-control" id="output-console" rows="3"></textarea>
-						<button type="button" className="mt-4 btn btn-primary w-100" disabled={!this.state.done} onClick={this.state.downloadResults}>Download
+						<button type="button" className="mt-4 btn btn-primary w-100" disabled={!this.state.done} onClick={this.downloadResults}>Download
 							Results</button>
 						<div id="duration">
 							{this.state.timeElapsed &&
 								<p id="duration-text" className="my-3">Total runtime: {this.state.timeElapsed} seconds</p>
 							}
 							{this.state.running && !this.state.done &&
-								<img id="running-loading-circle" className="loading-circle ms-2" src={loadingCircle}
-									alt="loading" />
+								<Fragment>
+									Running ... &nbsp;
+									<img id="running-loading-circle" className="loading-circle ms-2" src={loadingCircle}
+										alt="loading" />
+								</Fragment>
 							}
 						</div>
 					</div>

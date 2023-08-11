@@ -13,6 +13,17 @@ body {
 	font-size: 1rem;
 }
 
+.loading-circle {
+	height: 20px;
+	animation: loading-anim 2s linear infinite;
+}
+
+#loading {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
 #content {
 	display: flex;
 	width: 100%;
@@ -50,18 +61,6 @@ body {
 			border: 2px solid black;
 			height: 60vh;
 			font-size: 0.9rem;
-		}
-
-		#loading {
-			display: flex;
-			justify-content: center;
-			align-items: center;
-		}
-
-		.loading-circle {
-			height: 20px;
-
-			animation: loading-anim 2s linear infinite;
 		}
 
 		#duration {
