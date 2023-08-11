@@ -41,6 +41,7 @@ export class App extends Component {
 
 			siteTitle: "ViralMSA",
 			siteReady: false,
+			expandedContainer: undefined,
 
 			sharedArray: undefined,
 		}
@@ -133,7 +134,7 @@ export class App extends Component {
 			}
 		} else if (event.data.pyodideConsole) {
 			// updating console
-			LOG(event.data.pyodideConsole)
+			LOG(event.data.pyodideConsole, false)
 		} else if (event.data.finished) {
 			// on ViralMSA finish
 			this.setState({ done: true, timeElapsed: (new Date().getTime() - this.state.startTime) / 1000 })
@@ -258,23 +259,32 @@ export class App extends Component {
 		document.body.removeChild(a);
 	}
 
+	toggleExpandContainer = (container) => {
+		this.setState(prevState => {
+			return { expandedContainer: prevState.expandedContainer === container ? undefined : container }
+		});
+	}
+
 	render() {
 		return (
 			<div className="root">
 				<h2 className="mt-5 mb-2 text-center" >{this.state.siteTitle}</h2>
 				<p className="text-center my-3">
 					WebAssembly implementation of <a href="https://www.github.com/niemasd/ViralMSA" target="_blank"
-						rel="noreferrer">ViralMSA</a>.<br />
-					Created by Daniel Ji, UCSD Undergraduate Student Researcher for Professor <a href="https://www.niema.net"
-						target="_blank" rel="noreferrer">Niema Moshiri</a>
+						rel="noreferrer">ViralMSA</a>.
 				</p>
 				<div id="loading" className={this.state.siteReady ? 'd-none' : 'mt-4'}>
 					<h5 className="text-center me-2">Loading </h5>
 					<img className="loading-circle mb-2" src={loadingCircle} alt="loading" />
 				</div>
-				<div id="content" className={`${this.state.siteReady ? '' : 'd-none'} mt-4`}>
-					<div className="input">
-						<h5 className="w-100 text-start mb-3">Input</h5>
+				<div id="content" className={`${this.state.siteReady ? '' : 'd-none'} mt-4 mb-4`}>
+					<div id="input" className={`${this.state.expandedContainer === 'input' && 'full-width-container'} ${this.state.expandedContainer === 'output' && 'd-none'}`}>
+						<div id="input-header" className="mb-3">
+							<h5 className="my-0">Input</h5>
+							<h4 className="my-0">
+								<i className={`bi bi-${this.state.expandedContainer === 'input' ? 'arrows-angle-contract' : 'arrows-fullscreen'}`} onClick={() => this.toggleExpandContainer('input')}></i>
+							</h4>
+						</div>
 						<div id="ref-seq-container">
 							<div id="input-sequences-container" className="mb-3">
 								<label htmlFor="input-sequences" className="form-label">Input Sequences (FASTA Format)</label>
@@ -322,11 +332,15 @@ export class App extends Component {
 						</button>
 						<button type="button" className="mt-3 btn btn-primary w-100" onClick={this.runViralMSA}>Run ViralMSA</button>
 					</div>
-					<div className="output">
-						<h5 className="mb-3">Console</h5>
+					<div id="output" className={`${this.state.expandedContainer === 'output' && 'full-width-container'} ${this.state.expandedContainer === 'input' && 'd-none'}`}>
+						<div id="output-header" className="mb-3">
+							<h5 className="my-0">Console</h5>
+							<h4 className="my-0">
+								<i className={`bi bi-${this.state.expandedContainer === 'output' ? 'arrows-angle-contract' : 'arrows-fullscreen'}`} onClick={() => this.toggleExpandContainer('output')}></i>
+							</h4>
+						</div>
 						<textarea className="form-control" id="output-console" rows="3"></textarea>
-						<button type="button" className="mt-4 btn btn-primary w-100" disabled={!this.state.done} onClick={this.downloadResults}>Download
-							Results</button>
+						<button type="button" className="mt-4 btn btn-primary w-100" disabled={!this.state.done} onClick={this.downloadResults}>Download Results</button>
 						<div id="duration">
 							{this.state.timeElapsed &&
 								<p id="duration-text" className="my-3">Total runtime: {this.state.timeElapsed} seconds</p>

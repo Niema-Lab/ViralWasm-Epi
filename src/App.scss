@@ -18,6 +18,10 @@ body {
 	animation: loading-anim 2s linear infinite;
 }
 
+.full-width-container {
+	width: 100% !important;
+}
+
 #loading {
 	display: flex;
 	justify-content: center;
@@ -31,7 +35,7 @@ body {
 	padding: 0vh 5vw;
 	justify-content: space-between;
 
-	.input {
+	#input {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -54,7 +58,7 @@ body {
 		}
 	}
 
-	.output {
+	#output {
 		width: 45vw;
 
 		textarea {
@@ -70,7 +74,20 @@ body {
 			font-weight: bold;
 		}
 	}
+
+	#input-header,
+	#output-header {
+		display: inline-flex;
+		justify-content: space-between;
+		align-items: center;
+		width: 100%;
+
+		i {
+			cursor: pointer;
+		}
+	}
 }
+
 
 @keyframes loading-anim {
 	0% {

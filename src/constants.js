@@ -8,10 +8,10 @@ export const CLEAR_LOG = () => {
 	textArea.value = "";
 }
 
-export const LOG = (output) => {
+export const LOG = (output, includeTime = true) => {
 	const textArea = document.getElementById(OUTPUT_ID);
 	const date = new Date();
-	textArea.value += `${getTimeWithMilliseconds(date)}: ` + output;
+	textArea.value += (includeTime ? `${getTimeWithMilliseconds(date)}: ` : '') + output;
 }
 
 export const getTimeWithMilliseconds = date => {
