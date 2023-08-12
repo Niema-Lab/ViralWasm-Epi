@@ -161,7 +161,7 @@ const runViralMSA = async (inputSequences, referenceSequence, refID, omitRef) =>
 
             // post message to main thread to run minimap2
             self.postMessage({
-                'runminimap2': 'buildIndex',
+                'runMinimap2': 'buildIndex',
                 'command': command, 
                 'inputSeq': pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + fastaFile, { encoding: "utf8" })
             });
@@ -179,7 +179,7 @@ const runViralMSA = async (inputSequences, referenceSequence, refID, omitRef) =>
 
             // run minimap2 in BioWASM
             self.postMessage({
-                'runminimap2': 'alignment',
+                'runMinimap2': 'alignment',
                 'command': command, 
                 'refSeq': pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "sequence.fas", { encoding: "utf8" })
             });
@@ -214,5 +214,6 @@ const runViralMSA = async (inputSequences, referenceSequence, refID, omitRef) =>
 
     // after finished
     downloadResults = true;
-    self.postMessage({'finished': true})
+    self.postMessage({'finished': true, 'output': pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.aln", { encoding: "utf8" })})
+	mm2FinishedBuffer.fill(0);
 }
