@@ -62,7 +62,7 @@ const init = async () => {
     pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + 'ViralMSA.py', await (await fetch("https://raw.githubusercontent.com/niemasd/ViralMSA/master/ViralMSA.py")).text(), { encoding: "utf8" });
 
     // load in ViralMSAWeb.py
-    ViralMSAWeb = await (await fetch("https://raw.githubusercontent.com/niemasd/ViralMSA/master/website/assets/python/ViralMSAWeb.py")).text()
+    ViralMSAWeb = await (await fetch("https://raw.githubusercontent.com/niemasd/ViralMSA/master/website/src/assets/python/ViralMSAWeb.py")).text()
 
     // get REFS and REF_NAMES for preloaded reference sequences and indexes
     pyodide.runPython(ViralMSAWeb)
@@ -109,13 +109,13 @@ const runViralMSA = async (inputSequences, referenceSequence, refID, omitRef) =>
     // preloaded reference sequence and index  
     if (refID) {
         // get reference sequence virus name to use in command line args
-        refVirus = [...REFS].find(([key, value]) => value === refID)[0];
+        const refVirus = [...REFS].find(([key, value]) => value === refID)[0];
 
         // only fetch reference sequence and index if not already in cache
         if (!pyodide.FS.readdir(`${PATH_TO_PYODIDE_ROOT}/cache/`).includes(refID)) {
             // get reference sequence and index
-            referenceSequence = await (await fetch("https://raw.githubusercontent.com/niemasd/viralmsa/master/ref_genomes/" + refID + "/" + refID + ".fas")).text();
-            refIndex = new Uint8Array(await (await fetch("https://raw.githubusercontent.com/niemasd/viralmsa/master/ref_genomes/" + refID + "/" + refID + ".fas.mmi")).arrayBuffer());
+            const referenceSequence = await (await fetch("https://raw.githubusercontent.com/niemasd/viralmsa/master/ref_genomes/" + refID + "/" + refID + ".fas")).text();
+            const refIndex = new Uint8Array(await (await fetch("https://raw.githubusercontent.com/niemasd/viralmsa/master/ref_genomes/" + refID + "/" + refID + ".fas.mmi")).arrayBuffer());
         
             // write reference sequence and index to Pyodide
             pyodide.FS.mkdir(`${PATH_TO_PYODIDE_ROOT}/cache/${refID}`)

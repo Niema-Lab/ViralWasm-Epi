@@ -10,8 +10,9 @@ import {
 	LOG,
 	CLEAR_LOG,
 	MAX_SHARED_ARRAY_BUFFER_SIZE,
-	VIRAL_MSA_LINK,
-	VIRAL_MSA_REPO_STRUCTURE_LINK
+	VIRAL_MSA_REPO_STRUCTURE_LINK,
+	EXAMPLE_INPUT_FILE,
+	EXAMPLE_PRELOADED_REF
 } from './constants.js';
 
 const viralMSAWorker = new Worker(new URL('./assets/workers/viralmsaworker.js', import.meta.url));
@@ -104,7 +105,7 @@ export class App extends Component {
 
 	fetchExampleInput = async () => {
 		this.setState({
-			exampleInput: await (await fetch("https://raw.githubusercontent.com/niemasd/viralmsa/master/example/example_hiv.fas")).text()
+			exampleInput: await (await fetch(EXAMPLE_INPUT_FILE)).text()
 		})
 	}
 
@@ -205,16 +206,41 @@ export class App extends Component {
 	}
 
 	toggleExampleData = () => {
-		this.setState(prevState => ({ useExampleInput: !prevState.useExampleInput }))
+		this.setState(prevState => ({ useExampleInput: !prevState.useExampleInput, preloadedRef: prevState.useExampleInput ? prevState.preloadedRef : EXAMPLE_PRELOADED_REF }))
 	}
 
-	runViralMSA = async () => {
+	runViralEpi = async () => {
 		// validation
 		if (!this.state.useExampleInput && this.state.inputFile === undefined) {
 			alert("Please upload an input sequence file.");
 			return;
 		}
 
+		if (this.state.skipAlignment) {
+			await this.runTn93();
+		} else {
+			await this.runViralMSA();
+		}
+	}
+
+	runTn93 = async () => {
+		// TODO: further validation
+
+		// clear console and runtime record
+		CLEAR_LOG();
+		this.setState({ running: true, done: false, timeElapsed: undefined, startTime: new Date().getTime() })
+
+		LOG("Reading input sequence file...")
+		const inputFileReader = new FileReader();
+		inputFileReader.readAsText(this.state.inputFile, "UTF-8");
+		inputFileReader.onload = (e) => {
+			LOG("Running tn93...")
+			biowasmWorker.postMessage({ 'runTn93': true, 'inputFile': e.target.result });
+		}
+	}
+
+	runViralMSA = async () => {
+		// further validation
 		if (this.state.preloadedRef === undefined && this.state.refFile === undefined) {
 			alert("Please upload or select a reference sequence file.");
 			return;
@@ -311,7 +337,7 @@ export class App extends Component {
 								<input className="form-control" type="file" id="input-sequences" onChange={this.setInputFile} />
 								{this.state.useExampleInput &&
 									<p className="mt-2 mb-0"><strong>Using Loaded Example Data: <a
-										href="https://raw.githubusercontent.com/niemasd/viralmsa/master/example/example_hiv.fas"
+										href={EXAMPLE_INPUT_FILE}
 										target="_blank" rel="noreferrer">example_hiv.fas</a></strong></p>
 								}
 							</div>
@@ -359,7 +385,7 @@ export class App extends Component {
 						<button type="button" className={`mt-3 w-100 btn ${this.state.useExampleInput ? 'btn-success' : 'btn-warning'}`} onClick={this.toggleExampleData}>
 							Load Example Data {this.state.useExampleInput ? '(Currently Using Example Data)' : ''}
 						</button>
-						<button type="button" className="mt-3 btn btn-primary w-100" onClick={this.runViralMSA}>Run ViralWasm-Epi</button>
+						<button type="button" className="mt-3 btn btn-primary w-100" onClick={this.runViralEpi}>Run ViralWasm-Epi</button>
 					</div>
 					<div id="output" className={`${this.state.expandedContainer === 'output' && 'full-width-container'} ${this.state.expandedContainer === 'input' && 'd-none'}`}>
 						<div id="output-header" className="mb-3">
