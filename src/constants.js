@@ -14,6 +14,7 @@ export const LOG = (output, extraFormat = true) => {
 	const textArea = document.getElementById(OUTPUT_ID);
 	const date = new Date();
 	textArea.value += (extraFormat ? `${getTimeWithMilliseconds(date)}: ` : '') + output + (extraFormat ? '\n' : '');
+	textArea.scrollTop = textArea.scrollHeight;
 }
 
 export const getTimeWithMilliseconds = date => {

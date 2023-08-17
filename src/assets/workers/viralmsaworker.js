@@ -23,10 +23,6 @@ self.onmessage = async (event) => {
                     ['sequence.fas.aln', pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.aln", { encoding: "utf8" })],
                 ]
             })
-        } else {
-            self.postMessage({
-                'error': "No results to download."
-            })
         }
     // run ViralMSA
     } else if (event.data.run) {    
@@ -41,10 +37,10 @@ const init = async () => {
     // load pyodide
     pyodide = await loadPyodide({
         stdout: (text) => {
-            self.postMessage({'pyodideConsole': "STDOUT: " + text + "\n"})
+            self.postMessage({log: "STDOUT: " + text + "\n"})
         },
         stderr: (text) => {
-            self.postMessage({'pyodideConsole': "STDERR: " + text + "\n"})
+            self.postMessage({log: "STDERR: " + text + "\n"})
         },
     });
 
@@ -69,9 +65,9 @@ const init = async () => {
     REFS = pyodide.globals.get('REFS').toJs()
     REF_NAMES = pyodide.globals.get('REF_NAMES').toJs()
     self.postMessage({
-        'init': 'done',
-        'REFS': REFS, 
-        'REF_NAMES': REF_NAMES,
+        init: 'done',
+        REFS, 
+        REF_NAMES,
         'VERSION': pyodide.globals.get('VERSION'),
     })
 }
@@ -136,6 +132,7 @@ const runViralMSA = async (inputSequences, referenceSequence, refID, omitRef) =>
 		args += " --omit_ref";
 	}
 
+	self.postMessage({log: '\nRunning command: ' + args + "\n\n"})
 	pyodide.globals.set("arguments", args);
 
     
@@ -161,9 +158,9 @@ const runViralMSA = async (inputSequences, referenceSequence, refID, omitRef) =>
 
             // post message to main thread to run minimap2
             self.postMessage({
-                'runMinimap2': 'buildIndex',
-                'command': command, 
-                'inputSeq': pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + fastaFile, { encoding: "utf8" })
+                runMinimap2: 'buildIndex',
+                command, 
+                inputSeq: pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + fastaFile, { encoding: "utf8" })
             });
 
         // alignment
@@ -179,9 +176,9 @@ const runViralMSA = async (inputSequences, referenceSequence, refID, omitRef) =>
 
             // run minimap2 in BioWASM
             self.postMessage({
-                'runMinimap2': 'alignment',
-                'command': command, 
-                'refSeq': pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "sequence.fas", { encoding: "utf8" })
+                runMinimap2: 'alignment',
+                command, 
+                refSeq: pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "sequence.fas", { encoding: "utf8" })
             });
         }
 
@@ -214,6 +211,6 @@ const runViralMSA = async (inputSequences, referenceSequence, refID, omitRef) =>
 
     // after finished
     downloadResults = true;
-    self.postMessage({'finished': true, 'output': pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.aln", { encoding: "utf8" })})
+    self.postMessage({finished: true, output: pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.aln", { encoding: "utf8" })})
 	mm2FinishedBuffer.fill(0);
 }

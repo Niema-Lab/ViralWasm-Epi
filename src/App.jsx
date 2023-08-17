@@ -1,6 +1,6 @@
 // TODO: incorporate gzip wherever and optimize memory usage
 // TODO: add arguments to tn93
-// TODO: figure out skip alignment feature
+// TODO: do we even need to show tn93 output? 
 import React, { Component, Fragment } from 'react'
 
 import './App.scss'
@@ -38,6 +38,35 @@ export class App extends Component {
 
 			refFile: undefined,
 
+			optionalOpen: false,
+
+			threshold: 1.0,
+			validThreshold: true,
+
+			ambigs: "resolve",
+
+			ambigsString: "",
+
+			fraction: 1.0,
+			validFraction: true,
+
+			format: "csv",
+
+			overlap: 1,
+			validOverlap: true,
+
+			counts: ":",
+			validCounts: true,
+
+			probability: 1,
+			validProbability: true,
+
+			bootstrap: false,
+			bootstrapAcrossSites: false,
+			countFlag: false,
+			compute: false,
+			selfDistance: false,
+
 			omitRef: false,
 
 			startTime: new Date().getTime(),
@@ -59,14 +88,23 @@ export class App extends Component {
 		// Setup shared array buffer for waiting for minimap2 to finish and transmitting file data
 		const sharedArrayBuffer = new SharedArrayBuffer(MAX_SHARED_ARRAY_BUFFER_SIZE);
 		const sharedArray = new Int32Array(sharedArrayBuffer);
-		viralMSAWorker.postMessage({ 'arraybuffer': sharedArray })
-		biowasmWorker.postMessage({ 'arraybuffer': sharedArray })
+		viralMSAWorker.postMessage({ arraybuffer: sharedArray })
+		biowasmWorker.postMessage({ arraybuffer: sharedArray })
 		this.setState({ sharedArray })
 
 		// Other initialization
+		this.disableNumberInputScroll();
 		this.fetchPreloadedRef();
 		this.initPreloadedRefs();
 		this.fetchExampleInput();
+	}
+
+	disableNumberInputScroll = () => {
+		document.addEventListener("wheel", () => {
+			if (document.activeElement.type === "number") {
+				document.activeElement.blur();
+			}
+		});
 	}
 
 	fetchPreloadedRef = async () => {
@@ -125,21 +163,19 @@ export class App extends Component {
 				LOG(`Downloading ${download[0]}`)
 				this.downloadFile(download[0], download[1])
 			}
-		} else if (event.data.pyodideConsole) {
+		} else if (event.data.log) {
 			// updating console
-			LOG(event.data.pyodideConsole, false)
+			LOG(event.data.log, false)
 		} else if (event.data.finished) {
 			// on ViralMSA finish, run tn93
-			LOG("ViralMSA finished!\n\n")
-			LOG("Running tn93...")
-			biowasmWorker.postMessage({ 'runTn93': true, 'inputFile': event.data.output });
-			// this.setState({ done: true, timeElapsed: (new Date().getTime() - this.state.startTime) / 1000 })
+			LOG("ViralMSA finished!\n")
+			this.runTN93(false, event.data.output);
 		} else if (event.data.runMinimap2) {
 			// Pyodide call to run minimap2 
 			if (event.data.runMinimap2 === 'alignment') {
-				biowasmWorker.postMessage({ 'runMinimap2': 'alignment', 'command': event.data.command, 'refSeq': event.data.refSeq });
+				biowasmWorker.postMessage({ runMinimap2: 'alignment', command: event.data.command, refSeq: event.data.refSeq });
 			} else if (event.data.runMinimap2 === 'buildIndex') {
-				biowasmWorker.postMessage({ 'runMinimap2': 'buildIndex', 'command': event.data.command, 'inputSeq': event.data.inputSeq });
+				biowasmWorker.postMessage({ runMinimap2: 'buildIndex', command: event.data.command, inputSeq: event.data.inputSeq });
 			}
 		}
 	}
@@ -205,6 +241,70 @@ export class App extends Component {
 		this.setState(prevState => ({ omitRef: !prevState.omitRef }))
 	}
 
+	setThreshold = (event) => {
+		this.setState({ threshold: event.target.value, inputChanged: true, validThreshold: event.target.value >= 0 && event.target.value <= 1 })
+	}
+
+	setAmbigs = (event) => {
+		this.setState({ ambigs: event.target.value, inputChanged: true })
+	}
+
+	setAmbigsString = (event) => {
+		this.setState({ ambigsString: event.target.value, inputChanged: true })
+	}
+
+	setFraction = (event) => {
+		this.setState({ fraction: event.target.value, inputChanged: true, validFraction: event.target.value >= 0 && event.target.value <= 1 })
+	}
+
+	setFormat = (event) => {
+		this.setState({ format: event.target.value, inputChanged: true })
+	}
+
+	setOverlap = (event) => {
+		this.setState({ overlap: event.target.value, inputChanged: true, validOverlap: event.target.value >= 1 && event.target.value == parseInt(event.target.value) })
+	}
+
+	setCounts = (event) => {
+		this.setState({ counts: event.target.value, inputChanged: true, validCounts: event.target.value.length === 1 })
+	}
+
+	setProbability = (event) => {
+		this.setState({ probability: event.target.value, inputChanged: true, validProbability: event.target.value >= 0 && event.target.value <= 1 })
+	}
+
+	setBootstrap = (event) => {
+		this.setState({ bootstrap: event.target.checked, inputChanged: true })
+	}
+
+	setBootstrapAcrossSites = (event) => {
+		this.setState({ bootstrapAcrossSites: event.target.checked, inputChanged: true })
+	}
+
+	setCountFlag = (event) => {
+		if (event.target.checked) {
+			this.setFormat({
+				target: { value: "csv" }
+			})
+		}
+
+		this.setState({ countFlag: event.target.checked, inputChanged: true })
+	}
+
+	setCompute = (event) => {
+		this.setState({ compute: event.target.checked, inputChanged: true })
+	}
+
+	setSelfDistance = (event) => {
+		this.setState({ selfDistance: event.target.checked, inputChanged: true })
+	}
+
+	toggleTN93Args = (open = undefined) => {
+		this.setState(prevState => {
+			return { optionalOpen: open === undefined ? !prevState.optionalOpen : open }
+		})
+	}
+
 	toggleExampleData = () => {
 		this.setState(prevState => ({ useExampleInput: !prevState.useExampleInput, preloadedRef: prevState.useExampleInput ? prevState.preloadedRef : EXAMPLE_PRELOADED_REF }))
 	}
@@ -217,26 +317,94 @@ export class App extends Component {
 		}
 
 		if (this.state.skipAlignment) {
-			await this.runTn93();
+			if (this.validTN93()) {
+				await this.runTN93(true, this.state.inputFile);
+			}
 		} else {
 			await this.runViralMSA();
 		}
 	}
 
-	runTn93 = async () => {
-		// TODO: further validation
+	validTN93 = () => {
+		let valid = this.state.validThreshold && this.state.validFraction && this.state.validOverlap && this.state.validCounts && this.state.validProbability;
 
-		// clear console and runtime record
-		CLEAR_LOG();
-		this.setState({ running: true, done: false, timeElapsed: undefined, startTime: new Date().getTime() })
+		if (!valid) {
+			this.toggleTN93Args();
+			alert("Please enter valid TN93 arguments.");
+			return false;
+		}
+
+		return true;
+	}
+
+	runTN93 = async (standalone, inputFile) => {
+		if (standalone) {
+			CLEAR_LOG();
+			this.setState({ running: true, done: false, timeElapsed: undefined, startTime: new Date().getTime() })
+		}
+
+		let command = "tn93 -o pairwise-distances.csv";
+
+		// add threshold
+		command += " -t " + (this.state.threshold === "" ? "1.0" : this.state.threshold);
+
+		// add ambigs
+		command += " -a " + (this.state.ambigs === "string" ? this.state.ambigsString : this.state.ambigs);
+
+		// add fraction
+		command += " -g " + (this.state.fraction === "" ? "1.0" : this.state.fraction);
+
+		// add format
+		if (!this.state.countFlag) {
+			command += " -f " + this.state.format;
+		}
+
+		// add overlap
+		command += " -l " + (this.state.overlap === "" ? "0" : this.state.overlap);
+
+		// add counts
+		command += " -d " + `"${(this.state.counts === "" ? ":" : this.state.counts)}"`;
+
+		// add probability
+		command += " -u " + (this.state.probability === "" ? "1" : this.state.probability);
+
+		// add bootstrap
+		if (this.state.bootstrap) {
+			command += " -b";
+		}
+
+		// add bootstrap across sites
+		if (this.state.bootstrap && this.state.secondFile && this.state.bootstrapAcrossSites) {
+			command += " -r";
+		}
+
+		// add count flag
+		if (this.state.countFlag) {
+			command += " -c";
+		}
+
+		// add compute
+		if (this.state.secondFile && this.state.compute) {
+			command += " -c";
+		}
+
+		// add self distance
+		if (this.state.selfDistance) {
+			command += " -0";
+		}
+
+		// add input file
+		command += " input.fas";
 
 		LOG("Reading input sequence file...")
-		const inputFileReader = new FileReader();
-		inputFileReader.readAsText(this.state.inputFile, "UTF-8");
-		inputFileReader.onload = (e) => {
-			LOG("Running tn93...")
-			biowasmWorker.postMessage({ 'runTn93': true, 'inputFile': e.target.result });
-		}
+		const inputFileText = typeof inputFile === 'string' ? inputFile : await this.fileReaderReadFile(inputFile);
+
+		LOG("Running tn93...")
+		biowasmWorker.postMessage({
+			runTN93: true,
+			inputFile: inputFileText,
+			command
+		});
 	}
 
 	runViralMSA = async () => {
@@ -287,14 +455,14 @@ export class App extends Component {
 			if (inputSeq && (refSeq || refID)) {
 				clearInterval(interval);
 				LOG("Running ViralMSA...")
-				viralMSAWorker.postMessage({ 'run': 'viralmsa', 'inputSeq': inputSeq, 'refSeq': refSeq, 'refID': refID, 'omitRef': this.state.omitRef });
+				viralMSAWorker.postMessage({ run: 'viralmsa', inputSeq, refSeq, refID, 'omitRef': this.state.omitRef });
 			}
 		}, 100);
 	}
 
 	downloadResults = () => {
-		viralMSAWorker.postMessage({ 'getResults': 'all' });
-		biowasmWorker.postMessage({ 'getResults': 'all' });
+		viralMSAWorker.postMessage({ getResults: 'all' });
+		biowasmWorker.postMessage({ getResults: 'all' });
 	}
 
 	downloadFile = (filename, text) => {
@@ -304,6 +472,21 @@ export class App extends Component {
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);
+	}
+
+	// helper function to read file as text or arraybuffer and promisify
+	fileReaderReadFile = async (file, asArrayBuffer = false) => {
+		return new Promise((resolve) => {
+			const fileReader = new FileReader();
+			fileReader.onload = () => {
+				resolve(fileReader.result);
+			}
+			if (asArrayBuffer) {
+				fileReader.readAsArrayBuffer(file);
+			} else {
+				fileReader.readAsText(file);
+			}
+		})
 	}
 
 	toggleExpandContainer = (container) => {
@@ -377,6 +560,80 @@ export class App extends Component {
 									<input className="form-check-input" type="checkbox" value="" id="omit-ref" checked={this.state.omitRef} onChange={this.toggleOmitRef} />
 									<label className="form-check-label" htmlFor="omit-ref">
 										Omit Reference Sequence from Output
+									</label>
+								</div>
+							</div>
+
+							<h6 className="mt-5" id="optional-arguments" onClick={() => this.toggleTN93Args()}>TN93 Arguments <i className={`bi bi-chevron-${this.state.optionalOpen ? 'up' : 'down'}`}></i></h6>
+							<hr></hr>
+
+							<div className={`${this.state.optionalOpen ? '' : 'd-none'}`}>
+								<p className="mb-2">Threshold: </p>
+								<input type="number" className={`form-control ${!this.state.validThreshold && 'is-invalid'}`} id="input-threshold" placeholder="Default: 1.0" min="0" max="1" step="0.01" value={this.state.threshold} onInput={this.setThreshold} />
+
+								<p className="mt-3 mb-2">Ambiguous Nucleotide Strategy (Default: Resolve)</p>
+								<select className="form-select" id="input-ambiguity" value={this.state.ambigs} onChange={this.setAmbigs}>
+									<option value="resolve">Resolve</option>
+									<option value="average">Average</option>
+									<option value="skip">Skip</option>
+									<option value="gapmm">Gapmm</option>
+									<option value="string">String</option>
+								</select>
+
+								<p className={`mt-3 mb-2 ${!(this.state.ambigs === "string") && 'text-disabled'}`}>Ambiguous Nucleotide String: </p>
+								<input type="text" className="form-control" id="input-ambiguity-string" disabled={!(this.state.ambigs === "string")} value={this.state.ambigsString} onInput={this.setAmbigsString} />
+
+								<p className={`mt-3 mb-2 ${!(this.state.ambigs === "resolve" || this.state.ambigs === "string") && 'text-disabled'}`}>Maximum tolerated fraction of ambig. characters:</p>
+								<input type="number" className={`form-control ${!this.state.validFraction && 'is-invalid'}`} id="input-fraction" value={this.state.fraction} onInput={this.setFraction} placeholder={`${(this.state.ambigs === "resolve" || this.state.ambigs === "string") ? 'Default: 1.0' : ''}`} min="0" max="1" step="0.01" disabled={!(this.state.ambigs === "resolve" || this.state.ambigs === "string")} />
+
+								<p className={`mt-3 mb-2 ${this.state.countFlag && 'text-disabled'}`}>Output Format: (Default: CSV)</p>
+								<select className="form-select" id="input-format" disabled={this.state.countFlag} value={this.state.format} onChange={this.setFormat}>
+									<option value="csv">CSV</option>
+									<option value="csvn">CSVN</option>
+									<option value="hyphy">HYPHY</option>
+								</select>
+
+								<p className="mt-3 mb-2">Overlap minimum:</p>
+								<input type="number" className={`form-control ${!this.state.validOverlap && 'is-invalid'}`} id="input-overlap" placeholder="Default: 1" min="1" value={this.state.overlap} onInput={this.setOverlap} />
+
+								<p className="mt-3 mb-2">Counts in name:</p>
+								<input type="text" className={`form-control ${!this.state.validCounts && 'is-invalid'}`} id="input-counts" placeholder='Default: ":"' value={this.state.counts} onInput={this.setCounts} />
+
+								<p className="mt-3 mb-2">Sequence Subsample Probability:</p>
+								<input type="number" className={`form-control ${!this.state.validProbability && 'is-invalid'}`} id="input-probability" placeholder="Default: 1.0" min="0" value={this.state.probability} onInput={this.setProbability} />
+
+								<div className="form-check my-4">
+									<input className="form-check-input" type="checkbox" id="input-bootstrap" checked={this.state.bootstrap} onChange={this.setBootstrap} />
+									<label className="form-check-label" htmlFor="input-bootstrap">
+										-b: Bootstrap alignment columns
+									</label>
+								</div>
+
+								<div className="form-check my-4">
+									<input className="form-check-input" type="checkbox" id="input-bootstrap-across-sites" checked={this.state.bootstrapAcrossSites} onChange={this.setBootstrapAcrossSites} disabled={this.state.secondFile && this.state.bootstrap} />
+									<label className="form-check-label" htmlFor="input-bootstrap-across-sites">
+										-r: Bootstrap across sites
+									</label>
+								</div>
+
+								<div className="form-check my-4">
+									<input className="form-check-input" type="checkbox" id="input-count" checked={this.state.countFlag} onChange={this.setCountFlag} />
+									<label className="form-check-label" htmlFor="input-count">
+										-c: Only count pairs below the threshold
+									</label>
+								</div>
+
+								<div className="form-check my-4">
+									<input className="form-check-input" type="checkbox" id="input-compute" checked={this.state.compute} onChange={this.setCompute} disabled={this.state.secondFile} />
+									<label className="form-check-label" htmlFor="input-compute">
+										-m: compute inter- and intra-population means
+									</label>
+								</div>
+
+								<div className="form-check my-4">
+									<input className="form-check-input" type="checkbox" id="input-zero" checked={this.state.selfDistance} onChange={this.setSelfDistance} />
+									<label className="form-check-label" htmlFor="input-zero">
+										-0: report distances between each sequence and itself
 									</label>
 								</div>
 							</div>
