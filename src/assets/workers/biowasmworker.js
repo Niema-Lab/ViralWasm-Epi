@@ -6,6 +6,7 @@ let downloadResults = false;
 
 const init = async () => {
 	CLI = await new Aioli(["minimap2/2.22", "tn93/1.0.11"]);
+	self.postMessage({ init: true })
 }
 
 init();
@@ -19,12 +20,12 @@ self.onmessage = async (event) => {
 	} else if (event.data.runMinimap2) {
 		runMinimap2(event.data.command, event.data.inputSeq, event.data.refSeq);
 	} else if (event.data.runTN93) {
-		runTN93(event.data.inputFile, event.data.command);
+		runTN93(event.data.alignmentFile, event.data.command);
 	} else if (event.data.getResults) {
 		if (downloadResults) {
 			self.postMessage({
 				download: [
-					['pairwise-distances.csv', await CLI.fs.readFile("pairwise-distances.csv", { encoding: "utf8" })],
+					['pairwise-distances.tsv', await CLI.fs.readFile("pairwise-distances.tsv", { encoding: "utf8" })],
 				]
 			})
 		}
@@ -72,15 +73,15 @@ const runMinimap2 = async (command, inputSeq, refSeq) => {
 	}
 }
 
-const runTN93 = async (inputFile, command) => {
-	// mount input file
+const runTN93 = async (alignmentFile, command) => {
+	// mount alignment file
 	await CLI.mount([{
 		name: "input.fas",
-		data: inputFile,
+		data: alignmentFile,
 	}]);
 
 	// create output file
-	await CLI.fs.writeFile("pairwise-distances.csv", "", { encoding: "utf8" });
+	await CLI.fs.writeFile("pairwise-distances.tsv", "", { encoding: "utf8" });
 
 	// run tn93 in BioWASM
 	self.postMessage({ log: '\nRunning command: ' + command + '\n\n' })
@@ -88,7 +89,9 @@ const runTN93 = async (inputFile, command) => {
 	self.postMessage({ log: output })
 
 	// send over output file data (tn93 output)
-	self.postMessage({ tn93done: true })
+	const dataOutput = await CLI.fs.readFile("pairwise-distances.tsv", { encoding: "utf8" });
+	await CLI.fs.writeFile("pairwise-distances.tsv", dataOutput, { encoding: "utf8" })
+	self.postMessage({ tn93done: true, output: dataOutput })
 
 	downloadResults = true;
 }
@@ -98,7 +101,6 @@ const clearFiles = async () => {
 	for (const file of files) {
 		if (file !== "." && file !== "..") {
 			await CLI.fs.unlink(file);
-			console.log(file);
 		}
 	}
 }

@@ -1,6 +1,8 @@
+// TODO: speed up load time / run time
 // TODO: incorporate gzip wherever and optimize memory usage
-// TODO: add arguments to tn93
 // TODO: do we even need to show tn93 output? 
+// TODO: make csv work
+// TODO: delimiter option for tn93 
 import React, { Component, Fragment } from 'react'
 
 import './App.scss'
@@ -12,7 +14,8 @@ import {
 	MAX_SHARED_ARRAY_BUFFER_SIZE,
 	VIRAL_MSA_REPO_STRUCTURE_LINK,
 	EXAMPLE_INPUT_FILE,
-	EXAMPLE_PRELOADED_REF
+	EXAMPLE_PRELOADED_REF,
+	DEFAULT_INPUT_STATE
 } from './constants.js';
 
 const viralMSAWorker = new Worker(new URL('./assets/workers/viralmsaworker.js', import.meta.url));
@@ -25,54 +28,20 @@ export class App extends Component {
 		this.state = {
 			REFS: undefined,
 			REF_NAMES: undefined,
-
-			exampleInput: undefined,
-			useExampleInput: false,
-			inputFile: undefined,
-
-			skipAlignment: false,
-
 			refGenomes: new Set(),
+			exampleInput: undefined,
 			preloadRefOptions: undefined,
-			preloadedRef: undefined,
 
-			refFile: undefined,
-
-			optionalOpen: false,
-
-			threshold: 1.0,
-			validThreshold: true,
-
-			ambigs: "resolve",
-
-			ambigsString: "",
-
-			fraction: 1.0,
-			validFraction: true,
-
-			format: "csv",
-
-			overlap: 1,
-			validOverlap: true,
-
-			counts: ":",
-			validCounts: true,
-
-			probability: 1,
-			validProbability: true,
-
-			bootstrap: false,
-			bootstrapAcrossSites: false,
-			countFlag: false,
-			compute: false,
-			selfDistance: false,
-
-			omitRef: false,
+			...DEFAULT_INPUT_STATE,
 
 			startTime: new Date().getTime(),
 			timeElapsed: undefined,
 			running: false,
+			runningViralMSA: false,
 			done: false,
+			downloadAlignment: false,
+			downloadPairwise: false,
+			clusteringData: undefined,
 
 			siteReady: false,
 			expandedContainer: undefined,
@@ -155,7 +124,7 @@ export class App extends Component {
 		} else if (event.data.init) {
 			// done loading pyodide / ViralMSA 
 			this.setState({ REFS: event.data.REFS, REF_NAMES: event.data.REF_NAMES })
-			LOG("ViralMSA Loaded.")
+			LOG("ViralMSA loaded.")
 		} else if (event.data.download) {
 			// download results
 			for (const download of event.data.download) {
@@ -169,6 +138,7 @@ export class App extends Component {
 		} else if (event.data.finished) {
 			// on ViralMSA finish, run tn93
 			LOG("ViralMSA finished!\n")
+			this.setState({ downloadAlignment: true })
 			this.runTN93(false, event.data.output);
 		} else if (event.data.runMinimap2) {
 			// Pyodide call to run minimap2 
@@ -181,6 +151,10 @@ export class App extends Component {
 	}
 
 	handleBiowasmMessage = (event) => {
+		if (event.data.init) {
+			LOG("Biowasm loaded.")
+		}
+
 		// minimap2 done running
 		if (event.data.minimap2done) {
 			const fileData = event.data.minimap2done === 'alignment' ? event.data.sam : event.data.mmi;
@@ -197,8 +171,9 @@ export class App extends Component {
 
 		// tn93 done running
 		if (event.data.tn93done) {
-			LOG("tn93 finished!")
-			this.setState({ done: true, timeElapsed: (new Date().getTime() - this.state.startTime) / 1000 })
+			LOG("tn93 finished!\n")
+			this.setState({ downloadPairwise: true })
+			this.runMolecularClustering(event.data.output);
 		}
 
 		// log messages from biowasmworker
@@ -221,7 +196,7 @@ export class App extends Component {
 	}
 
 	setPreloadedRef = (event) => {
-		this.setState({ preloadedRef: event.target.value === 'undefined' ? undefined : event.target.value, })
+		this.setState({ preloadedRef: event.target.value === 'undefined' ? undefined : event.target.value })
 	}
 
 	setRefFile = (event) => {
@@ -284,7 +259,7 @@ export class App extends Component {
 	setCountFlag = (event) => {
 		if (event.target.checked) {
 			this.setFormat({
-				target: { value: "csv" }
+				target: { value: "tsv" }
 			})
 		}
 
@@ -309,6 +284,18 @@ export class App extends Component {
 		this.setState(prevState => ({ useExampleInput: !prevState.useExampleInput, preloadedRef: prevState.useExampleInput ? prevState.preloadedRef : EXAMPLE_PRELOADED_REF }))
 	}
 
+	promptResetInput = () => {
+		if (window.confirm("Are you sure you want to reset? All input data will be lost.")) {
+			this.resetInput();
+		}
+	}
+
+	resetInput = () => {
+		this.setState(Object.assign({}, DEFAULT_INPUT_STATE));
+		document.getElementById('input-sequences').value = null;
+		document.getElementById('ref-sequence').value = null;
+	}
+
 	runViralEpi = async () => {
 		// validation
 		if (!this.state.useExampleInput && this.state.inputFile === undefined) {
@@ -316,7 +303,14 @@ export class App extends Component {
 			return;
 		}
 
+		this.setState({ running: true, done: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, clusteringData: undefined })
+
 		if (this.state.skipAlignment) {
+			if (this.state.useExampleInput) {
+				alert('Cannot skip alignment when using example data.');
+				return;
+			}
+
 			if (this.validTN93()) {
 				await this.runTN93(true, this.state.inputFile);
 			}
@@ -337,13 +331,14 @@ export class App extends Component {
 		return true;
 	}
 
-	runTN93 = async (standalone, inputFile) => {
+	runTN93 = async (standalone, alignmentFile) => {
 		if (standalone) {
 			CLEAR_LOG();
-			this.setState({ running: true, done: false, timeElapsed: undefined, startTime: new Date().getTime() })
+			this.setState({ runningViralMSA: false })
 		}
 
-		let command = "tn93 -o pairwise-distances.csv";
+		// TODO: update with csv
+		let command = 'tn93 -o pairwise-distances.tsv -D \t';
 
 		// add threshold
 		command += " -t " + (this.state.threshold === "" ? "1.0" : this.state.threshold);
@@ -356,7 +351,7 @@ export class App extends Component {
 
 		// add format
 		if (!this.state.countFlag) {
-			command += " -f " + this.state.format;
+			command += " -f " + this.state.format === 'tsv' ? 'csv' : this.state.format;
 		}
 
 		// add overlap
@@ -397,12 +392,12 @@ export class App extends Component {
 		command += " input.fas";
 
 		LOG("Reading input sequence file...")
-		const inputFileText = typeof inputFile === 'string' ? inputFile : await this.fileReaderReadFile(inputFile);
+		const alignmentFileText = typeof alignmentFile === 'string' ? alignmentFile : await this.fileReaderReadFile(alignmentFile);
 
 		LOG("Running tn93...")
 		biowasmWorker.postMessage({
 			runTN93: true,
-			inputFile: inputFileText,
+			alignmentFile: alignmentFileText,
 			command
 		});
 	}
@@ -417,7 +412,7 @@ export class App extends Component {
 		// validation passed
 		// clear console and runtime record
 		CLEAR_LOG();
-		this.setState({ running: true, done: false, timeElapsed: undefined, startTime: new Date().getTime() })
+		this.setState({ runningViralMSA: true })
 
 		let inputSeq;
 		let refSeq;
@@ -429,19 +424,11 @@ export class App extends Component {
 		if (this.state.useExampleInput) {
 			inputSeq = this.state.exampleInput;
 		} else {
-			const inputSeqReader = new FileReader();
-			inputSeqReader.readAsText(this.state.inputFile, "UTF-8");
-			inputSeqReader.onload = (e) => {
-				inputSeq = e.target.result;
-			}
+			inputSeq = await this.fileReaderReadFile(this.state.inputFile);
 		}
 
 		if (this.state.refFile) {
-			const refSeqReader = new FileReader();
-			refSeqReader.readAsText(this.state.refFile, "UTF-8");
-			refSeqReader.onload = (e) => {
-				refSeq = e.target.result;
-			}
+			refSeq = await this.fileReaderReadFile(this.state.refFile);
 		} else {
 			// only need to provide refID when using a preloaded reference sequence and index
 			refID = this.state.preloadedRef;
@@ -460,9 +447,88 @@ export class App extends Component {
 		}, 100);
 	}
 
-	downloadResults = () => {
+	runMolecularClustering = (pairwiseFile) => {
+		LOG("Running molecular clustering...")
+		let clusteringData = "SequenceName\tClusterNumber\n";
+		const clusters = new Map();
+		const sequences = new Map();
+
+		const lines = pairwiseFile.split("\n");
+		lines.shift();
+
+		for (const line of lines) {
+			if (line === "") {
+				continue;
+			}
+
+			// TODO: update with csv
+			// line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+			const [seq1, seq2, dist] = line.split("\t");
+
+			if (dist > this.state.threshold) {
+				continue;
+			}
+
+			if (sequences.has(seq1) && sequences.has(seq2)) {
+				// merge clusters
+				if (sequences.get(seq1) === sequences.get(seq2)) {
+					continue;
+				}
+
+				const cluster1 = sequences.get(seq1);
+				const cluster2 = sequences.get(seq2);
+
+				// merge smaller cluster into larger cluster
+				if (clusters.get(cluster1).size > clusters.get(cluster2).size) {
+					for (const seq of clusters.get(cluster2)) {
+						sequences.set(seq, cluster1);
+					}
+
+					clusters.get(cluster1).add(...clusters.get(cluster2));
+					clusters.delete(cluster2);
+				} else {
+					for (const seq of clusters.get(cluster1)) {
+						sequences.set(seq, cluster2);
+					}
+
+					clusters.get(cluster2).add(...clusters.get(cluster1));
+					clusters.delete(cluster1);
+				}
+
+			} else if (sequences.has(seq1) && !sequences.has(seq2)) {
+				// add seq2 to cluster of seq1
+				sequences.set(seq2, sequences.get(seq1));
+				clusters.get(sequences.get(seq1)).add(seq2);
+			} else if (!sequences.has(seq1) && sequences.has(seq2)) {
+				// add seq1 to cluster of seq2
+				sequences.set(seq1, sequences.get(seq2));
+				clusters.get(sequences.get(seq2)).add(seq1);
+			} else if (!sequences.has(seq1) && !sequences.has(seq2)) {
+				// create new cluster
+				sequences.set(seq1, clusters.size);
+				sequences.set(seq2, clusters.size);
+				clusters.set(clusters.size, new Set([seq1, seq2]));
+			}
+		}
+
+		for (const [seq, cluster] of sequences) {
+			clusteringData += `${seq}\t${cluster}\n`;
+		}
+
+		LOG("Molecular clustering finished!\n")
+		this.setState({ clusteringData, done: true, timeElapsed: (new Date().getTime() - this.state.startTime) / 1000 })
+	}
+
+	downloadAlignment = () => {
 		viralMSAWorker.postMessage({ getResults: 'all' });
+	}
+
+	downloadPairwise = () => {
 		biowasmWorker.postMessage({ getResults: 'all' });
+	}
+
+	downloadClusters = () => {
+		this.downloadFile("clusters.tsv", this.state.clusteringData);
 	}
 
 	downloadFile = (filename, text) => {
@@ -541,8 +607,8 @@ export class App extends Component {
 										</span>
 									}
 								</label>
-								<select className="form-select" aria-label="Default select example" id="common-sequences" value={this.state.preloadedRef} onChange={this.setPreloadedRef}>
-									<option value="undefined">Select a Reference Sequence</option>
+								<select className="form-select" aria-label="Default select example" id="common-sequences" value={this.state.preloadedRef ?? ''} onChange={this.setPreloadedRef}>
+									<option value="">Select a Reference Sequence</option>
 									{this.state.preloadRefOptions}
 								</select>
 
@@ -586,11 +652,12 @@ export class App extends Component {
 								<p className={`mt-3 mb-2 ${!(this.state.ambigs === "resolve" || this.state.ambigs === "string") && 'text-disabled'}`}>Maximum tolerated fraction of ambig. characters:</p>
 								<input type="number" className={`form-control ${!this.state.validFraction && 'is-invalid'}`} id="input-fraction" value={this.state.fraction} onInput={this.setFraction} placeholder={`${(this.state.ambigs === "resolve" || this.state.ambigs === "string") ? 'Default: 1.0' : ''}`} min="0" max="1" step="0.01" disabled={!(this.state.ambigs === "resolve" || this.state.ambigs === "string")} />
 
-								<p className={`mt-3 mb-2 ${this.state.countFlag && 'text-disabled'}`}>Output Format: (Default: CSV)</p>
+								<p className={`mt-3 mb-2 ${this.state.countFlag && 'text-disabled'}`}>Output Format: (Default: TSV)</p>
 								<select className="form-select" id="input-format" disabled={this.state.countFlag} value={this.state.format} onChange={this.setFormat}>
+									<option value="tsv">TSV</option>
+									<option value="tsvn">TSVN</option>
 									<option value="csv">CSV</option>
 									<option value="csvn">CSVN</option>
-									<option value="hyphy">HYPHY</option>
 								</select>
 
 								<p className="mt-3 mb-2">Overlap minimum:</p>
@@ -639,6 +706,7 @@ export class App extends Component {
 							</div>
 						</div>
 
+						<button type="button" className="mt-3 btn btn-danger w-100" onClick={this.promptResetInput}>Reset Input</button>
 						<button type="button" className={`mt-3 w-100 btn ${this.state.useExampleInput ? 'btn-success' : 'btn-warning'}`} onClick={this.toggleExampleData}>
 							Load Example Data {this.state.useExampleInput ? '(Currently Using Example Data)' : ''}
 						</button>
@@ -652,7 +720,17 @@ export class App extends Component {
 							</h4>
 						</div>
 						<textarea className="form-control" id="output-console" rows="3"></textarea>
-						<button type="button" className="mt-4 btn btn-primary w-100" disabled={!this.state.done} onClick={this.downloadResults}>Download Results</button>
+						<div id="download-buttons" className="mt-4">
+							{this.state.downloadAlignment &&
+								<button type="button" className="btn btn-primary w-100 mx-3" onClick={this.downloadAlignment}>Download Alignment</button>
+							}
+							{this.state.downloadPairwise &&
+								<button type="button" className="btn btn-primary w-100 mx-3" onClick={this.downloadPairwise}>Download Pairwise Distances</button>
+							}
+							{this.state.clusteringData &&
+								<button type="button" className="btn btn-primary w-100 mx-3" onClick={this.downloadClusters}>Download Clusters</button>
+							}
+						</div>
 						<div id="duration" className="my-3">
 							{this.state.timeElapsed &&
 								<p id="duration-text">Total runtime: {this.state.timeElapsed} seconds</p>

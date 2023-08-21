@@ -32,7 +32,7 @@ body {
 	display: flex;
 	width: 100%;
 	flex-direction: row;
-	padding: 0vh 5vw;
+	padding: 0vh 3vw;
 	justify-content: space-between;
 
 	#input {
@@ -53,7 +53,7 @@ body {
 			}
 
 			#common-sequences option {
-				font-size: 0.9rem;
+				font-size: 0.8rem;
 			}
 		}
 
@@ -63,11 +63,11 @@ body {
 	}
 
 	#output {
-		width: 45vw;
+		width: 50vw;
 
 		textarea {
 			border: 2px solid black;
-			height: 60vh;
+			height: 70vh;
 			font-size: 0.9rem;
 		}
 
@@ -76,6 +76,16 @@ body {
 			justify-content: center;
 			align-items: center;
 			font-weight: bold;
+		}
+
+		#download-buttons {
+			display: flex;
+			justify-content: space-between;
+			align-items: stretch;
+
+			button {
+				font-size: 0.9rem;
+			}
 		}
 	}
 
