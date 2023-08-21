@@ -3,6 +3,7 @@ importScripts("https://biowasm.com/cdn/v3/aioli.js")
 let CLI;
 let mm2FinishedBuffer;
 let downloadResults = false;
+let outputFileName = undefined;
 
 const init = async () => {
 	CLI = await new Aioli(["minimap2/2.22", "tn93/1.0.11"]);
@@ -25,7 +26,7 @@ self.onmessage = async (event) => {
 		if (downloadResults) {
 			self.postMessage({
 				download: [
-					['pairwise-distances.tsv', await CLI.fs.readFile("pairwise-distances.tsv", { encoding: "utf8" })],
+					[outputFileName, await CLI.fs.readFile(outputFileName, { encoding: "utf8" })],
 				]
 			})
 		}
@@ -80,8 +81,10 @@ const runTN93 = async (alignmentFile, command) => {
 		data: alignmentFile,
 	}]);
 
+	outputFileName = 'pairwise-distances' + (command.includes('-D \t') ? '.tsv' : '.csv');
+
 	// create output file
-	await CLI.fs.writeFile("pairwise-distances.tsv", "", { encoding: "utf8" });
+	await CLI.fs.writeFile(outputFileName, "", { encoding: "utf8" });
 
 	// run tn93 in BioWASM
 	self.postMessage({ log: '\nRunning command: ' + command + '\n\n' })
@@ -89,8 +92,8 @@ const runTN93 = async (alignmentFile, command) => {
 	self.postMessage({ log: output })
 
 	// send over output file data (tn93 output)
-	const dataOutput = await CLI.fs.readFile("pairwise-distances.tsv", { encoding: "utf8" });
-	await CLI.fs.writeFile("pairwise-distances.tsv", dataOutput, { encoding: "utf8" })
+	const dataOutput = await CLI.fs.readFile(outputFileName, { encoding: "utf8" });
+	await CLI.fs.writeFile(outputFileName, dataOutput, { encoding: "utf8" })
 	self.postMessage({ tn93done: true, output: dataOutput })
 
 	downloadResults = true;

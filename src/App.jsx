@@ -1,8 +1,6 @@
 // TODO: speed up load time / run time
 // TODO: incorporate gzip wherever and optimize memory usage
 // TODO: do we even need to show tn93 output? 
-// TODO: make csv work
-// TODO: delimiter option for tn93 
 import React, { Component, Fragment } from 'react'
 
 import './App.scss'
@@ -337,8 +335,15 @@ export class App extends Component {
 			this.setState({ runningViralMSA: false })
 		}
 
-		// TODO: update with csv
-		let command = 'tn93 -o pairwise-distances.tsv -D \t';
+		let command = 'tn93 -o';
+
+		if (this.state.format.includes('tsv')) {
+			command += ' pairwise-distances.tsv -D \t';
+		} else if (this.state.format.includes('csv')) {
+			command += ' pairwise-distances.csv';
+		} else {
+			command += ' pairwise-distances.txt';
+		}
 
 		// add threshold
 		command += " -t " + (this.state.threshold === "" ? "1.0" : this.state.threshold);
@@ -351,7 +356,7 @@ export class App extends Component {
 
 		// add format
 		if (!this.state.countFlag) {
-			command += " -f " + this.state.format === 'tsv' ? 'csv' : this.state.format;
+			command += " -f " + this.state.format.replace("tsv", "csv");
 		}
 
 		// add overlap
@@ -449,7 +454,8 @@ export class App extends Component {
 
 	runMolecularClustering = (pairwiseFile) => {
 		LOG("Running molecular clustering...")
-		let clusteringData = "SequenceName\tClusterNumber\n";
+		const delimiter = this.state.format.includes('tsv') ? "\t" : ",";
+		let clusteringData = "SequenceName" + delimiter + "ClusterNumber\n";
 		const clusters = new Map();
 		const sequences = new Map();
 
@@ -461,9 +467,7 @@ export class App extends Component {
 				continue;
 			}
 
-			// TODO: update with csv
-			// line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-			const [seq1, seq2, dist] = line.split("\t");
+			const [seq1, seq2, dist] = this.state.format.includes('tsv') ? line.split("\t") : line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
 
 			if (dist > this.state.threshold) {
 				continue;
@@ -512,7 +516,7 @@ export class App extends Component {
 		}
 
 		for (const [seq, cluster] of sequences) {
-			clusteringData += `${seq}\t${cluster}\n`;
+			clusteringData += `${seq}${delimiter}${cluster}\n`;
 		}
 
 		LOG("Molecular clustering finished!\n")
@@ -528,7 +532,8 @@ export class App extends Component {
 	}
 
 	downloadClusters = () => {
-		this.downloadFile("clusters.tsv", this.state.clusteringData);
+		const tsvFormat = this.state.clusteringData.split("\n")[0].split("\t").length === 2;
+		this.downloadFile("clusters." + (tsvFormat ? "tsv" : "csv"), this.state.clusteringData);
 	}
 
 	downloadFile = (filename, text) => {
