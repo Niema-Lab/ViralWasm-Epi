@@ -12,8 +12,6 @@ export const DEFAULT_INPUT_STATE = {
 	refFile: undefined,
 	omitRef: false,
 
-	tn93Open: false,
-
 	threshold: 1.0,
 	validThreshold: true,
 	ambigs: "resolve",

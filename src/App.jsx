@@ -31,6 +31,8 @@ export class App extends Component {
 			preloadRefOptions: undefined,
 
 			...DEFAULT_INPUT_STATE,
+			
+			tn93Open: false,
 
 			startTime: new Date().getTime(),
 			timeElapsed: undefined,
@@ -598,7 +600,7 @@ export class App extends Component {
 			<div className="root">
 				<h2 className="mt-5 mb-2 text-center" >ViralWasm-Epi</h2>
 				<p className="text-center my-3">
-					WebAssembly-based molecular clustering app. Uses ViralMSA, minimap2, and tn93.
+					A serverless WebAssembly-based pipeline for multi-sequence alignment and molecular clustering. Uses ViralMSA, minimap2, and tn93 via <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.
 				</p>
 				<div id="loading" className={this.state.siteReady ? 'd-none' : 'mt-4'}>
 					<h5 className="text-center me-2">Loading </h5>
