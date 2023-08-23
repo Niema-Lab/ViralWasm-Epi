@@ -274,7 +274,17 @@ export class App extends Component {
 
 	toggleTN93Args = (open = undefined) => {
 		this.setState(prevState => {
-			return { optionalOpen: open === undefined ? !prevState.optionalOpen : open }
+			return { tn93Open: open === undefined ? !prevState.tn93Open : open }
+		})
+	}
+
+	setClusterThreshold = (event) => {
+		this.setState({ clusterThreshold: event.target.value, inputChanged: true, validClusterThreshold: event.target.value >= 0 && event.target.value <= 1, clusterThresholdCopy: false })
+	}
+
+	toggleClusteringArgs = (open = undefined) => {
+		this.setState(prevState => {
+			return { clusteringOpen: open === undefined ? !prevState.clusteringOpen : open }
 		})
 	}
 
@@ -469,7 +479,7 @@ export class App extends Component {
 
 			const [seq1, seq2, dist] = this.state.format.includes('tsv') ? line.split("\t") : line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
 
-			if (dist > this.state.threshold) {
+			if (dist > (this.state.clusterThresholdCopy ? this.state.threshold : this.state.clusterThreshold)) {
 				continue;
 			}
 
@@ -512,6 +522,23 @@ export class App extends Component {
 				sequences.set(seq1, clusters.size);
 				sequences.set(seq2, clusters.size);
 				clusters.set(clusters.size, new Set([seq1, seq2]));
+			}
+		}
+
+		// add excluded singletons 
+		for (const line of lines) {
+			if (line === "") {
+				continue;
+			}
+
+			const [seq1, seq2, dist] = this.state.format.includes('tsv') ? line.split("\t") : line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+
+			if (!sequences.has(seq1)) {
+				sequences.set(seq1, -1);
+			}
+
+			if (!sequences.has(seq2)) {
+				sequences.set(seq2, -1);
 			}
 		}
 
@@ -635,10 +662,10 @@ export class App extends Component {
 								</div>
 							</div>
 
-							<h6 className="mt-5" id="optional-arguments" onClick={() => this.toggleTN93Args()}>TN93 Arguments <i className={`bi bi-chevron-${this.state.optionalOpen ? 'up' : 'down'}`}></i></h6>
+							<h6 className="mt-5" id="tn93-arguments" onClick={() => this.toggleTN93Args()}>TN93 Arguments <i className={`bi bi-chevron-${this.state.tn93Open ? 'up' : 'down'}`}></i></h6>
 							<hr></hr>
 
-							<div className={`${this.state.optionalOpen ? '' : 'd-none'}`}>
+							<div className={`${this.state.tn93Open ? '' : 'd-none'}`}>
 								<p className="mb-2">Threshold: </p>
 								<input type="number" className={`form-control ${!this.state.validThreshold && 'is-invalid'}`} id="input-threshold" placeholder="Default: 1.0" min="0" max="1" step="0.01" value={this.state.threshold} onInput={this.setThreshold} />
 
@@ -709,6 +736,19 @@ export class App extends Component {
 									</label>
 								</div>
 							</div>
+
+							<h6 className="mt-5" id="clustering-arguments" onClick={() => this.toggleClusteringArgs()}>Molecular Clustering Arguments <i className={`bi bi-chevron-${this.state.clusteringOpen ? 'up' : 'down'}`}></i></h6>
+							<hr></hr>
+
+							<div className={`${this.state.clusteringOpen ? '' : 'd-none'}`}>
+								<p className="mb-2">Cluster Threshold: (Default: TN93 Threshold)</p>
+								<input type="number"
+									className={`form-control ${!(this.state.clusterThresholdCopy ? this.state.validThreshold : this.state.validClusterThreshold) && 'is-invalid'}`}
+									id="input-threshold" placeholder="Default: TN93 Threshold" min="0" max="1" step="0.01"
+									value={this.state.clusterThresholdCopy ? this.state.threshold : this.state.clusterThreshold}
+									onInput={this.setClusterThreshold}
+								/>
+							</div>
 						</div>
 
 						<button type="button" className="mt-3 btn btn-danger w-100" onClick={this.promptResetInput}>Reset Input</button>
@@ -724,7 +764,7 @@ export class App extends Component {
 								<i className={`bi bi-${this.state.expandedContainer === 'output' ? 'arrows-angle-contract' : 'arrows-fullscreen'}`} onClick={() => this.toggleExpandContainer('output')}></i>
 							</h4>
 						</div>
-						<textarea className="form-control" id="output-console" rows="3"></textarea>
+						<textarea className="form-control" id="output-console" rows="3" spellCheck="false"></textarea>
 						<div id="download-buttons" className="mt-4">
 							{this.state.downloadAlignment &&
 								<button type="button" className="btn btn-primary w-100 mx-3" onClick={this.downloadAlignment}>Download Alignment</button>
