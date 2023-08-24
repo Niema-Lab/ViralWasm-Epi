@@ -13,11 +13,14 @@ import {
 	VIRAL_MSA_REPO_STRUCTURE_LINK,
 	EXAMPLE_INPUT_FILE,
 	EXAMPLE_PRELOADED_REF,
-	DEFAULT_INPUT_STATE
+	DEFAULT_INPUT_STATE,
+	VIRAL_MSA_REF_GENOMES_DIR,
+	MINIMAP2_VERSION,
+	TN93_VERSION
 } from './constants.js';
 
-const viralMSAWorker = new Worker(new URL('./assets/workers/viralmsaworker.js', import.meta.url));
-const biowasmWorker = new Worker(new URL('./assets/workers/biowasmworker.js', import.meta.url));
+const viralMSAWorker = new Worker(new URL('./assets/workers/viralmsaworker.js', import.meta.url), { type: 'module' });
+const biowasmWorker = new Worker(new URL('./assets/workers/biowasmworker.js', import.meta.url), { type: 'module' });
 
 export class App extends Component {
 	constructor(props) {
@@ -26,12 +29,13 @@ export class App extends Component {
 		this.state = {
 			REFS: undefined,
 			REF_NAMES: undefined,
+			viralMSAVersion: undefined,
 			refGenomes: new Set(),
 			exampleInput: undefined,
 			preloadRefOptions: undefined,
 
 			...DEFAULT_INPUT_STATE,
-			
+
 			tn93Open: false,
 
 			startTime: new Date().getTime(),
@@ -123,7 +127,7 @@ export class App extends Component {
 			alert(event.data.error);
 		} else if (event.data.init) {
 			// done loading pyodide / ViralMSA 
-			this.setState({ REFS: event.data.REFS, REF_NAMES: event.data.REF_NAMES })
+			this.setState({ REFS: event.data.REFS, REF_NAMES: event.data.REF_NAMES, viralMSAVersion: ' v' + event.data.VERSION })
 			LOG("ViralMSA loaded.")
 		} else if (event.data.download) {
 			// download results
@@ -450,7 +454,7 @@ export class App extends Component {
 			// only need to provide refID when using a preloaded reference sequence and index
 			refID = this.state.preloadedRef;
 			// write reference index to minimap2 since it will never be built
-			refIndex = new Uint8Array(await (await fetch("https://raw.githubusercontent.com/niemasd/viralmsa/master/ref_genomes/" + refID + "/" + refID + ".fas.mmi")).arrayBuffer());
+			refIndex = new Uint8Array(await (await fetch(VIRAL_MSA_REF_GENOMES_DIR + refID + "/" + refID + ".fas.mmi")).arrayBuffer());
 			biowasmWorker.postMessage({ writeIndex: refIndex })
 		}
 
@@ -600,7 +604,7 @@ export class App extends Component {
 			<div className="root">
 				<h2 className="mt-5 mb-2 text-center" >ViralWasm-Epi</h2>
 				<p className="text-center my-3">
-					A serverless WebAssembly-based pipeline for multi-sequence alignment and molecular clustering. Uses ViralMSA, minimap2, and tn93 via <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.
+					A serverless WebAssembly-based pipeline for multi-sequence alignment and molecular clustering. <br /> Uses ViralMSA{this.state.viralMSAVersion}, minimap2 v{MINIMAP2_VERSION}, and tn93 v{TN93_VERSION} via <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.
 				</p>
 				<div id="loading" className={this.state.siteReady ? 'd-none' : 'mt-4'}>
 					<h5 className="text-center me-2">Loading </h5>
@@ -746,7 +750,7 @@ export class App extends Component {
 								<p className="mb-2">Cluster Threshold: (Default: TN93 Threshold)</p>
 								<input type="number"
 									className={`form-control ${!(this.state.clusterThresholdCopy ? this.state.validThreshold : this.state.validClusterThreshold) && 'is-invalid'}`}
-									id="input-threshold" placeholder="Default: TN93 Threshold" min="0" max="1" step="0.01"
+									id="cluster-threshold" placeholder="Default: TN93 Threshold" min="0" max="1" step="0.01"
 									value={this.state.clusterThresholdCopy ? this.state.threshold : this.state.clusterThreshold}
 									onInput={this.setClusterThreshold}
 								/>
