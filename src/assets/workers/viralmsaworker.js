@@ -1,5 +1,3 @@
-import "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js";
-
 import {
 	VIRAL_MSA_LINK,
 	VIRAL_MSA_WEB_LINK,
@@ -40,6 +38,8 @@ self.onmessage = async (event) => {
 }
 
 const init = async () => {
+	await import("https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js");
+	
 	// load pyodide
 	pyodide = await loadPyodide({
 		stdout: (text) => {

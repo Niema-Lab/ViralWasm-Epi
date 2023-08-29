@@ -1,5 +1,3 @@
-import "https://biowasm.com/cdn/v3/aioli.js";
-
 import {
 	MINIMAP2_VERSION, 
 	TN93_VERSION,
@@ -11,6 +9,7 @@ let downloadResults = false;
 let outputFileName = undefined;
 
 const init = async () => {
+	await import("https://biowasm.com/cdn/v3/aioli.js");
 	CLI = await new Aioli(["minimap2/" + MINIMAP2_VERSION, "tn93/" + TN93_VERSION]);
 	self.postMessage({ init: true })
 }
