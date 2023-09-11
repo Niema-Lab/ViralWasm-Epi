@@ -92,8 +92,7 @@ const runTN93 = async (alignmentFile, command) => {
 
 	// run tn93 in BioWASM
 	self.postMessage({ log: '\nRunning command: ' + command + '\n\n' })
-	const output = await CLI.exec(command);
-	self.postMessage({ log: output })
+	await CLI.exec(command);
 
 	// send over output file data (tn93 output)
 	const dataOutput = await CLI.fs.readFile(outputFileName, { encoding: "utf8" });

@@ -1,6 +1,6 @@
+// TODO: don't manually create offline files
 // TODO: speed up load time / run time
 // TODO: incorporate gzip wherever and optimize memory usage
-// TODO: do we even need to show tn93 output? 
 // TODO: firefox issue with webworker CORP
 // TODO: add warning input has changed
 import React, { Component, Fragment } from 'react'
