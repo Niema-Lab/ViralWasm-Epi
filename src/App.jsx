@@ -5,7 +5,6 @@
 import React, { Component, Fragment } from 'react'
 
 import Aioli from "@biowasm/aioli/dist/aioli";
-import { loadPyodide } from "pyodide";
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
