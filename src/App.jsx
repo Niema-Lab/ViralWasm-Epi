@@ -1,9 +1,11 @@
-// TODO: don't manually create offline files
 // TODO: speed up load time / run time
 // TODO: incorporate gzip wherever and optimize memory usage
 // TODO: firefox issue with webworker CORP
 // TODO: add warning input has changed
 import React, { Component, Fragment } from 'react'
+
+import Aioli from "@biowasm/aioli/dist/aioli";
+import { loadPyodide } from "pyodide";
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
@@ -14,18 +16,17 @@ import loadingCircle from './assets/loading.png'
 import {
 	LOG,
 	CLEAR_LOG,
-	MAX_SHARED_ARRAY_BUFFER_SIZE,
 	VIRAL_MSA_REPO_STRUCTURE_LINK,
 	EXAMPLE_INPUT_FILE,
 	EXAMPLE_PRELOADED_REF,
 	DEFAULT_INPUT_STATE,
 	VIRAL_MSA_REF_GENOMES_DIR,
+	VIRAL_MSA_LINK,
+	VIRAL_MSA_WEB_LINK,
 	MINIMAP2_VERSION,
-	TN93_VERSION
+	TN93_VERSION,
+	PATH_TO_PYODIDE_ROOT
 } from './constants.js';
-
-const viralMSAWorker = new Worker(new URL('./assets/workers/viralmsaworker.js', import.meta.url), { type: 'module' });
-const biowasmWorker = new Worker(new URL('./assets/workers/biowasmworker.js', import.meta.url), { type: 'module' });
 
 export class App extends Component {
 	constructor(props) {
@@ -35,11 +36,17 @@ export class App extends Component {
 			REFS: undefined,
 			REF_NAMES: undefined,
 			viralMSAVersion: undefined,
+			ViralMSAWeb: undefined,
 			refGenomes: new Set(),
 			exampleInput: undefined,
 			preloadRefOptions: undefined,
 
 			...DEFAULT_INPUT_STATE,
+
+			CLI: undefined,
+			pyodide: undefined,
+
+			samFileData: undefined,
 
 			tn93Open: false,
 
@@ -48,33 +55,78 @@ export class App extends Component {
 			running: false,
 			runningViralMSA: false,
 			done: false,
+			viralMSADownloadResults: false,
+			biowasmDownloadResults: false,
 			downloadAlignment: false,
 			downloadPairwise: false,
 			clusteringData: undefined,
 
 			siteReady: false,
 			expandedContainer: undefined,
-
-			sharedArray: undefined,
 		}
 	}
 
 	async componentDidMount() {
-		// Setup WebWorkers
-		viralMSAWorker.onmessage = this.handleViralMSAMessage;
-		biowasmWorker.onmessage = this.handleBiowasmMessage;
-		// Setup shared array buffer for waiting for minimap2 to finish and transmitting file data
-		const sharedArrayBuffer = new SharedArrayBuffer(MAX_SHARED_ARRAY_BUFFER_SIZE);
-		const sharedArray = new Int32Array(sharedArrayBuffer);
-		viralMSAWorker.postMessage({ arraybuffer: sharedArray })
-		biowasmWorker.postMessage({ arraybuffer: sharedArray })
-		this.setState({ sharedArray })
+		this.initPyodide();
+		this.initBiowasm();
 
 		// Other initialization
 		this.disableNumberInputScroll();
 		this.fetchPreloadedRef();
 		this.initPreloadedRefs();
 		this.fetchExampleInput();
+	}
+
+	initBiowasm = async () => {
+		this.setState({
+			CLI: await new Aioli([{
+				tool: "minimap2",
+				version: MINIMAP2_VERSION,
+				urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/minimap2`,
+			}, {
+				tool: "tn93",
+				version: TN93_VERSION,
+				urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/tn93`,
+			}])
+		})
+		LOG('Biowasm loaded.');
+	}
+
+	initPyodide = async () => {
+		// load pyodide
+		const pyodide = await loadPyodide({
+			stdout: (text) => {
+				LOG("STDOUT: " + text + "\n", false)
+			},
+			stderr: (text) => {
+				LOG("STDERR: " + text + "\n", false)
+			},
+		});
+		this.setState({ pyodide })
+
+		// load micropip, a package manager for Pyodide
+		await pyodide.loadPackage("micropip");
+		const micropip = pyodide.pyimport("micropip");
+
+		// install biopython, a ViralMSA dependency
+		await micropip.install('biopython');
+
+		// create cache directory for ViralMSA sequences and indexes 
+		pyodide.FS.mkdir(PATH_TO_PYODIDE_ROOT + 'cache');
+
+		// load in ViralMSA.py
+		pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + 'ViralMSA.py', await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_LINK}`)).text(), { encoding: "utf8" });
+
+		// load in ViralMSAWeb.py
+		const ViralMSAWeb = await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_WEB_LINK}`)).text()
+
+		// get REFS and REF_NAMES for preloaded reference sequences and indexes
+		pyodide.runPython(ViralMSAWeb)
+		const REFS = pyodide.globals.get('REFS').toJs()
+		const REF_NAMES = pyodide.globals.get('REF_NAMES').toJs()
+		// done loading pyodide / ViralMSA 
+		this.setState({ ViralMSAWeb, REFS, REF_NAMES, viralMSAVersion: ' v' + pyodide.globals.get('VERSION'), siteReady: true })
+		LOG("ViralMSA loaded.")
 	}
 
 	disableNumberInputScroll = () => {
@@ -86,7 +138,7 @@ export class App extends Component {
 	}
 
 	fetchPreloadedRef = async () => {
-		const res = await fetch(VIRAL_MSA_REPO_STRUCTURE_LINK);
+		const res = await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_REPO_STRUCTURE_LINK}`);
 		const json = await res.json();
 		const refGenomes = new Set();
 		for (const file of json.tree) {
@@ -114,88 +166,171 @@ export class App extends Component {
 				}
 
 				preloadRefOptions.sort((a, b) => a.key.localeCompare(b.key));
-				this.setState({ siteReady: true, preloadRefOptions })
+				this.setState({ preloadRefOptions })
 			}
 		}, 250)
 	}
 
 	fetchExampleInput = async () => {
 		this.setState({
-			exampleInput: await (await fetch(EXAMPLE_INPUT_FILE)).text()
+			exampleInput: await (await fetch(`${import.meta.env.BASE_URL || ''}${EXAMPLE_INPUT_FILE}`)).text()
 		})
 	}
 
-	handleViralMSAMessage = (event) => {
-		if (event.data.error) {
-			// error handling
-			this.setState({ running: false, done: false, timeElapsed: undefined })
-			alert(event.data.error);
-		} else if (event.data.init) {
-			// done loading pyodide / ViralMSA 
-			this.setState({ REFS: event.data.REFS, REF_NAMES: event.data.REF_NAMES, viralMSAVersion: ' v' + event.data.VERSION })
-			LOG("ViralMSA loaded.")
-		} else if (event.data.download) {
-			// download results
-			for (const download of event.data.download) {
+	postViralMSAMessage = async (message) => {
+		const pyodide = this.state.pyodide;
+
+		if (message.run) {
+			await this.postBiowasmMessage({ runMinimap2: 'buildIndex', command: 'minimap2 -t 1 -d target.fas.mmi target.fas', inputSeq: message.inputSeq, refSeq: message.refSeq });
+			await this.postBiowasmMessage({ runMinimap2: 'alignment', command: 'minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o sequence.fas.sam target.fas.mmi sequence.fas', inputSeq: message.inputSeq, refSeq: message.refSeq });
+			await this.pyodideRunViralMSA(this.state.samFileData, message.refSeq, message.omitRef);
+		} else if (message.getResults) {
+			if (!this.state.viralMSADownloadResults) {
+				return;
+			}
+
+			const downloads = [['sequence.fas.sam.aln', pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" })]]
+
+			for (const download of downloads) {
 				// first element of array is filename, second element is content
 				LOG(`Downloading ${download[0]}`)
 				this.downloadFile(download[0], download[1])
-			}
-		} else if (event.data.log) {
-			// updating console
-			LOG(event.data.log, false)
-		} else if (event.data.finished) {
-			// on ViralMSA finish, run tn93
-			LOG("ViralMSA finished!\n")
-			this.setState({ downloadAlignment: true })
-			this.runTN93(false, event.data.output);
-		} else if (event.data.runMinimap2) {
-			// Pyodide call to run minimap2 
-			if (event.data.runMinimap2 === 'alignment') {
-				biowasmWorker.postMessage({ runMinimap2: 'alignment', command: event.data.command, refSeq: event.data.refSeq });
-			} else if (event.data.runMinimap2 === 'buildIndex') {
-				biowasmWorker.postMessage({ runMinimap2: 'buildIndex', command: event.data.command, inputSeq: event.data.inputSeq });
 			}
 		}
 	}
 
-	handleBiowasmMessage = (event) => {
-		if (event.data.init) {
-			LOG("Biowasm loaded.")
+	pyodideRunViralMSA = async (inputSamData, refSeq, omitRef) => {
+		const pyodide = this.state.pyodide;
+
+		// reset global variable
+		this.setState({ viralMSADownloadResults: false })
+
+		// remove sequence.fas.sam
+		if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT).includes('sequence.fas.sam')) {
+			pyodide.FS.unlink(PATH_TO_PYODIDE_ROOT + 'sequence.fas.sam');
 		}
 
-		// minimap2 done running
-		if (event.data.minimap2done) {
-			const fileData = event.data.minimap2done === 'alignment' ? event.data.sam : event.data.mmi;
-
-			// adjust array size to be divisible by 4
-			const adjustedArray = new Uint8Array(Math.ceil(fileData.length / 4) * 4);
-			adjustedArray.set(fileData);
-			// update shared array buffer
-			this.state.sharedArray.set(new Uint32Array(adjustedArray.buffer), 0)
-
-			// notify ViralMSA WebWorker that minimap2 is done
-			Atomics.notify(this.state.sharedArray, 0);
+		// remove reference.fas
+		if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT).includes('reference.fas')) {
+			pyodide.FS.unlink(PATH_TO_PYODIDE_ROOT + 'reference.fas');
 		}
 
-		// tn93 done running
-		if (event.data.tn93done) {
-			LOG("tn93 finished!\n")
-			this.setState({ downloadPairwise: true })
-			this.runMolecularClustering(event.data.output);
+		// remove output folder
+		if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT).includes('output')) {
+			for (const file of pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + 'output')) {
+				if (file === '.' || file === '..') continue;
+				pyodide.FS.unlink(PATH_TO_PYODIDE_ROOT + 'output/' + file)
+			}
+			pyodide.FS.rmdir(PATH_TO_PYODIDE_ROOT + 'output', true);
 		}
 
-		// log messages from biowasmworker
-		if (event.data.log) {
-			LOG(event.data.log, false)
+		// write provided files to Pyodide
+		pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + 'reference.fas', refSeq, { encoding: "utf8" });
+		pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + 'sequence.fas.sam', inputSamData, { encoding: "utf8" });
+
+		let args = "./ViralMSA.py -e email@address.com -s sequence.fas.sam -o output -r reference.fas --viralmsa_dir cache";
+
+		if (omitRef) {
+			args += " --omit_ref";
 		}
 
-		// download results from biowasmworker
-		if (event.data.download) {
-			for (const download of event.data.download) {
+		LOG('\nRunning command: ' + args + "\n\n", false)
+		pyodide.globals.set("arguments", args);
+
+		// run ViralMSAWeb.py
+		pyodide.runPython(this.state.ViralMSAWeb);
+
+		// after finished
+		LOG("ViralMSA finished!\n")
+		this.setState({ viralMSADownloadResults: true, downloadAlignment: true })
+		this.runTN93(false, pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" }));
+	}
+
+	postBiowasmMessage = async (message) => {
+		const CLI = this.state.CLI;
+		if (message.runMinimap2) {
+			await this.biowasmRunMinimap2(message.command, message.inputSeq, message.refSeq);
+		} else if (message.runTN93) {
+			await this.biowasmRunTN93(message.alignmentFile, message.command);
+		} else if (message.getResults) {
+			if (!this.state.biowasmDownloadResults) {
+				return;
+			}
+
+			const downloads = [[this.state.biowasmOutputFileName, await CLI.fs.readFile(this.state.biowasmOutputFileName, { encoding: "utf8" })]]
+
+			for (const download of downloads) {
 				// first element of array is filename, second element is content
 				LOG(`Downloading ${download[0]}`)
 				this.downloadFile(download[0], download[1])
+			}
+		}
+	}
+
+	// run minimap2 with provided command, sequences
+	biowasmRunMinimap2 = async (command, inputSeq, refSeq) => {
+		const CLI = this.state.CLI;
+		this.setState({ biowasmDownloadResults: false })
+
+		if (command.includes('-d')) {
+			// build minimap2 index
+			await CLI.mount([{
+				name: "target.fas",
+				data: refSeq,
+			}]);
+
+			// run minimap2 in BioWASM
+			LOG('\nRunning command: ' + command + '\n\n', false)
+			LOG(await CLI.exec(command), false);
+		} else if (command.includes('-a')) {
+			// alignment
+			await CLI.mount([{
+				name: "sequence.fas",
+				data: inputSeq,
+			}]);
+
+			// run minimap2 in BioWASM
+			LOG('\nRunning command: ' + command + '\n\n', false)
+			LOG(await CLI.exec(command), false);
+
+			// set file data (sequence alignment / map file)
+			this.setState({ samFileData: await CLI.fs.readFile("sequence.fas.sam", { encoding: "utf8" }) })
+
+			// cleanup
+			await this.biowasmClearFiles();
+		}
+	}
+
+	biowasmRunTN93 = async (alignmentFile, command) => {
+		const CLI = this.state.CLI;
+
+		// mount alignment file
+		await CLI.mount([{
+			name: "input.fas",
+			data: alignmentFile,
+		}]);
+
+		const biowasmOutputFileName = 'pairwise-distances' + (command.includes('-D \t') ? '.tsv' : '.csv')
+		this.setState({ biowasmOutputFileName })
+
+		// create output file
+		await CLI.fs.writeFile(biowasmOutputFileName, "", { encoding: "utf8" });
+
+		// run tn93 in BioWASM
+		LOG('\nRunning command: ' + command + '\n\n', false)
+		await CLI.exec(command);
+
+		LOG("tn93 finished!\n")
+		this.setState({ biowasmDownloadResults: true, downloadPairwise: true })
+		this.runMolecularClustering(await CLI.fs.readFile(biowasmOutputFileName, { encoding: "utf8" }));
+	}
+
+	biowasmClearFiles = async () => {
+		const CLI = this.state.CLI;
+		const files = await CLI.fs.readdir("./");
+		for (const file of files) {
+			if (file !== "." && file !== "..") {
+				await CLI.fs.unlink(file);
 			}
 		}
 	}
@@ -421,7 +556,7 @@ export class App extends Component {
 		const alignmentFileText = typeof alignmentFile === 'string' ? alignmentFile : await this.fileReaderReadFile(alignmentFile);
 
 		LOG("Running tn93...")
-		biowasmWorker.postMessage({
+		this.postBiowasmMessage({
 			runTN93: true,
 			alignmentFile: alignmentFileText,
 			command
@@ -442,10 +577,7 @@ export class App extends Component {
 
 		let inputSeq;
 		let refSeq;
-		let refIndex;
-		let refID;
 
-		// sending file data to webworker
 		LOG("Reading input sequence file...")
 		if (this.state.useExampleInput) {
 			inputSeq = this.state.exampleInput;
@@ -457,20 +589,11 @@ export class App extends Component {
 			refSeq = await this.fileReaderReadFile(this.state.refFile);
 		} else {
 			// only need to provide refID when using a preloaded reference sequence and index
-			refID = this.state.preloadedRef;
-			// write reference index to minimap2 since it will never be built
-			refIndex = new Uint8Array(await (await fetch(VIRAL_MSA_REF_GENOMES_DIR + refID + "/" + refID + ".fas.mmi")).arrayBuffer());
-			biowasmWorker.postMessage({ writeIndex: refIndex })
+			refSeq = await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_REF_GENOMES_DIR}` + this.state.preloadedRef + "/" + this.state.preloadedRef + ".fas")).text();
 		}
 
-		// wait until file data is read and then run ViralMSA
-		const interval = setInterval(() => {
-			if (inputSeq && (refSeq || refID)) {
-				clearInterval(interval);
-				LOG("Running ViralMSA...")
-				viralMSAWorker.postMessage({ run: 'viralmsa', inputSeq, refSeq, refID, 'omitRef': this.state.omitRef });
-			}
-		}, 100);
+		LOG("Running ViralMSA...")
+		this.postViralMSAMessage({ run: 'viralmsa', inputSeq, refSeq, 'omitRef': this.state.omitRef })
 	}
 
 	runMolecularClustering = (pairwiseFile) => {
@@ -562,11 +685,11 @@ export class App extends Component {
 	}
 
 	downloadAlignment = () => {
-		viralMSAWorker.postMessage({ getResults: 'all' });
+		this.postViralMSAMessage({ getResults: 'all' });
 	}
 
 	downloadPairwise = () => {
-		biowasmWorker.postMessage({ getResults: 'all' });
+		this.postBiowasmMessage({ getResults: 'all' });
 	}
 
 	downloadClusters = () => {
@@ -625,11 +748,11 @@ export class App extends Component {
 						</div>
 						<div id="ref-seq-container">
 							<div id="input-sequences-container" className="mb-3">
-								<label htmlFor="input-sequences" className="form-label">Input Sequence File (FASTA Format)</label>
+								<label htmlFor="input-sequences" className="form-label">Input Sequence File ({this.state.skipAlignment ? 'Alignment File' : 'FASTA Format'})</label>
 								<input className="form-control" type="file" id="input-sequences" onChange={this.setInputFile} />
 								{this.state.useExampleInput &&
 									<p className="mt-2 mb-0"><strong>Using Loaded Example Data: <a
-										href={EXAMPLE_INPUT_FILE}
+										href={`${import.meta.env.BASE_URL || ''}${EXAMPLE_INPUT_FILE}`}
 										target="_blank" rel="noreferrer">example_hiv.fas</a></strong></p>
 								}
 							</div>
