@@ -6,7 +6,7 @@ export default defineConfig(({ command, mode }) => {
 	const env = loadEnv(mode, process.cwd(), '')
 	return {
 		plugins: [react()],
-		base: env.VITE_OFFLINE_VERSION === "true" ? '/' : '/ViralWasm-Consensus/',
+		base: env.VITE_OFFLINE_VERSION === "true" ? '/' : '/ViralWasm-Epi/',
 		optimizeDeps: {
 			exclude: ['pyodide']
 		}
