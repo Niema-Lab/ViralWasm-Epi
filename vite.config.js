@@ -5,8 +5,11 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ command, mode }) => {
 	const env = loadEnv(mode, process.cwd(), '')
 	return {
+		base: env.VITE_OFFLINE_VERSION !== "true" ? '/ViralWasm-Epi/' : '/',
 		plugins: [react()],
-		base: env.VITE_OFFLINE_VERSION === "true" ? '/' : '/ViralWasm-Epi/',
+		build: {
+			sourcemap: true,
+		},
 		optimizeDeps: {
 			exclude: ['pyodide']
 		}
