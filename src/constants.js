@@ -1,5 +1,6 @@
 export const MINIMAP2_VERSION = "2.22";
 export const TN93_VERSION = "1.0.11";
+export const FASTTREE_VERSION = "2.1.11";
 export const OUTPUT_ID = "output-console";
 export const MAX_SHARED_ARRAY_BUFFER_SIZE = 209715200;
 export const VIRAL_MSA_LINK = "tools/ViralMSA.py";

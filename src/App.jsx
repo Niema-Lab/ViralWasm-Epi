@@ -22,6 +22,7 @@ import {
 	VIRAL_MSA_WEB_LINK,
 	MINIMAP2_VERSION,
 	TN93_VERSION,
+	FASTTREE_VERSION,
 	PATH_TO_PYODIDE_ROOT
 } from './constants.js';
 
@@ -90,7 +91,7 @@ export class App extends Component {
 				urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/tn93`,
 			}, {
 				tool: "fasttree",
-				version: "2.1.11",
+				version: FASTTREE_VERSION,
 				urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/fasttree`,
 			}], {
 				printInterleaved: false,
@@ -791,7 +792,9 @@ export class App extends Component {
 			<div className="root">
 				<h2 className="mt-5 mb-2 text-center" >ViralWasm-Epi</h2>
 				<p className="text-center my-3">
-					A serverless WebAssembly-based pipeline for multi-sequence alignment and molecular clustering. <br /> Uses ViralMSA{this.state.viralMSAVersion}, minimap2 v{MINIMAP2_VERSION}, and tn93 v{TN93_VERSION} via <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.
+					A serverless WebAssembly-based pipeline for multi-sequence alignment and molecular clustering. <br /> Uses ViralMSA{this.state.viralMSAVersion}, minimap2 v{MINIMAP2_VERSION}, tn93 v{TN93_VERSION}, and FastTree v{FASTTREE_VERSION} via <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.
+					<br />
+					Source code & offline version: <a href="https://github.com/niema-lab/ViralWasm-Epi/" target="_blank" rel="noreferrer">github.com/niema-lab/ViralWasm-Epi</a>.<br />
 				</p>
 				<div id="loading" className={this.state.siteReady ? 'd-none' : 'mt-4'}>
 					<h5 className="text-center me-2">Loading </h5>
