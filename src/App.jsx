@@ -1,7 +1,5 @@
 // TODO: speed up load time / run time
 // TODO: incorporate gzip wherever and optimize memory usage
-// TODO: firefox issue with webworker CORP
-// TODO: add warning input has changed
 import React, { Component, Fragment } from 'react'
 
 import Aioli from "@biowasm/aioli/dist/aioli";
@@ -46,20 +44,24 @@ export class App extends Component {
 			pyodide: undefined,
 
 			samFileData: undefined,
-
-			tn93Open: false,
+			clusteringData: undefined,
 
 			startTime: new Date().getTime(),
 			timeElapsed: undefined,
 			running: false,
 			runningViralMSA: false,
 			done: false,
+			inputChanged: false,
+
 			viralMSADownloadResults: false,
 			biowasmDownloadResults: false,
 			downloadAlignment: false,
 			downloadPairwise: false,
-			clusteringData: undefined,
+			downloadTree: false,
 
+			clusteringOpen: false,
+			tn93Open: false,
+			fasttreeOpen: false,
 			siteReady: false,
 			expandedContainer: undefined,
 		}
@@ -86,7 +88,13 @@ export class App extends Component {
 				tool: "tn93",
 				version: TN93_VERSION,
 				urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/tn93`,
-			}])
+			}, {
+				tool: "fasttree",
+				version: "2.1.11",
+				urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/fasttree`,
+			}], {
+				printInterleaved: false,
+			})
 		})
 		LOG('Biowasm loaded.');
 	}
@@ -242,7 +250,7 @@ export class App extends Component {
 		// after finished
 		LOG("ViralMSA finished!\n")
 		this.setState({ viralMSADownloadResults: true, downloadAlignment: true })
-		this.runTN93(false, pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" }));
+		await this.runTN93(false, pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" }));
 	}
 
 	postBiowasmMessage = async (message) => {
@@ -280,7 +288,7 @@ export class App extends Component {
 
 			// run minimap2 in BioWASM
 			LOG('\nRunning command: ' + command + '\n\n', false)
-			LOG(await CLI.exec(command), false);
+			LOG((await CLI.exec(command)).stderr, false);
 		} else if (command.includes('-a')) {
 			// alignment
 			await CLI.mount([{
@@ -290,7 +298,7 @@ export class App extends Component {
 
 			// run minimap2 in BioWASM
 			LOG('\nRunning command: ' + command + '\n\n', false)
-			LOG(await CLI.exec(command), false);
+			LOG((await CLI.exec(command)).stderr, false);
 
 			// set file data (sequence alignment / map file)
 			this.setState({ samFileData: await CLI.fs.readFile("sequence.fas.sam", { encoding: "utf8" }) })
@@ -335,28 +343,31 @@ export class App extends Component {
 	}
 
 	setInputFile = (event) => {
-		this.setState({ useExampleInput: false, inputFile: event.target.files[0] })
+		this.setState({ useExampleInput: false, inputFile: event.target.files[0], inputChanged: true })
 	}
 
 	setPreloadedRef = (event) => {
-		this.setState({ preloadedRef: event.target.value === 'undefined' ? undefined : event.target.value })
+		this.setState({ preloadedRef: event.target.value === 'undefined' ? undefined : event.target.value, inputChanged: true })
 	}
 
 	setRefFile = (event) => {
-		this.setState({ refFile: event.target.files[0] })
+		this.setState({ refFile: event.target.files[0], inputChanged: true })
 	}
 
 	clearRefFile = () => {
+		if (this.state.refFile !== undefined) {
+			this.setState({ inputChanged: true })
+		}
 		this.setState({ refFile: undefined })
 		document.getElementById('ref-sequence').value = null;
 	}
 
 	toggleSkipAlignment = () => {
-		this.setState(prevState => ({ skipAlignment: !prevState.skipAlignment }))
+		this.setState(prevState => ({ skipAlignment: !prevState.skipAlignment, inputChanged: true }))
 	}
 
 	toggleOmitRef = () => {
-		this.setState(prevState => ({ omitRef: !prevState.omitRef }))
+		this.setState(prevState => ({ omitRef: !prevState.omitRef, inputChanged: true }))
 	}
 
 	setThreshold = (event) => {
@@ -433,8 +444,22 @@ export class App extends Component {
 		})
 	}
 
+	toggleFasttreeArgs = (open = undefined) => {
+		this.setState(prevState => {
+			return { fasttreeOpen: open === undefined ? !prevState.fasttreeOpen : open }
+		})
+	}
+
+	toggleGtrModel = () => {
+		this.setState(prevState => ({ gtrModel: !prevState.gtrModel, inputChanged: true }))
+	}
+
+	toggleGammaLikelihoods = () => {
+		this.setState(prevState => ({ gammaLikelihoods: !prevState.gammaLikelihoods, inputChanged: true }))
+	}
+
 	toggleExampleData = () => {
-		this.setState(prevState => ({ useExampleInput: !prevState.useExampleInput, preloadedRef: prevState.useExampleInput ? prevState.preloadedRef : EXAMPLE_PRELOADED_REF }))
+		this.setState(prevState => ({ useExampleInput: !prevState.useExampleInput, preloadedRef: prevState.useExampleInput ? prevState.preloadedRef : EXAMPLE_PRELOADED_REF, inputChanged: true }))
 	}
 
 	promptResetInput = () => {
@@ -444,19 +469,21 @@ export class App extends Component {
 	}
 
 	resetInput = () => {
-		this.setState(Object.assign({}, DEFAULT_INPUT_STATE));
+		this.setState(Object.assign({ inputChanged: true }, DEFAULT_INPUT_STATE));
 		document.getElementById('input-sequences').value = null;
 		document.getElementById('ref-sequence').value = null;
 	}
 
 	runViralEpi = async () => {
+		const pyodide = this.state.pyodide;
+
 		// validation
 		if (!this.state.useExampleInput && this.state.inputFile === undefined) {
 			alert("Please upload an input sequence file.");
 			return;
 		}
 
-		this.setState({ running: true, done: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, clusteringData: undefined })
+		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, downloadTree: false, clusteringData: undefined })
 
 		if (this.state.skipAlignment) {
 			if (this.state.useExampleInput) {
@@ -464,12 +491,49 @@ export class App extends Component {
 				return;
 			}
 
+			const inputAln = await this.fileReaderReadFile(this.state.inputFile);
 			if (this.validTN93()) {
-				await this.runTN93(true, this.state.inputFile);
+				await this.runTN93(true, inputAln);
 			}
+			await this.runFasttree(inputAln);
 		} else {
 			await this.runViralMSA();
+			await this.runFasttree(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" }));
 		}
+		this.setState({ done: true, timeElapsed: (new Date().getTime() - this.state.startTime) / 1000 })
+	}
+
+	runViralMSA = async () => {
+		// further validation
+		if (this.state.preloadedRef === undefined && this.state.refFile === undefined) {
+			alert("Please upload or select a reference sequence file.");
+			return;
+		}
+
+		// validation passed
+		// clear console and runtime record
+		CLEAR_LOG();
+		this.setState({ runningViralMSA: true })
+
+		let inputSeq;
+		let refSeq;
+
+		LOG("Reading input sequence file...")
+		if (this.state.useExampleInput) {
+			inputSeq = this.state.exampleInput;
+		} else {
+			inputSeq = await this.fileReaderReadFile(this.state.inputFile);
+		}
+
+		if (this.state.refFile) {
+			refSeq = await this.fileReaderReadFile(this.state.refFile);
+		} else {
+			// only need to provide refID when using a preloaded reference sequence and index
+			refSeq = await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_REF_GENOMES_DIR}` + this.state.preloadedRef + "/" + this.state.preloadedRef + ".fas")).text();
+		}
+
+		LOG("Running ViralMSA...")
+		await this.postViralMSAMessage({ run: 'viralmsa', inputSeq, refSeq, 'omitRef': this.state.omitRef })
 	}
 
 	validTN93 = () => {
@@ -555,44 +619,11 @@ export class App extends Component {
 		const alignmentFileText = typeof alignmentFile === 'string' ? alignmentFile : await this.fileReaderReadFile(alignmentFile);
 
 		LOG("Running tn93...")
-		this.postBiowasmMessage({
+		await this.postBiowasmMessage({
 			runTN93: true,
 			alignmentFile: alignmentFileText,
 			command
 		});
-	}
-
-	runViralMSA = async () => {
-		// further validation
-		if (this.state.preloadedRef === undefined && this.state.refFile === undefined) {
-			alert("Please upload or select a reference sequence file.");
-			return;
-		}
-
-		// validation passed
-		// clear console and runtime record
-		CLEAR_LOG();
-		this.setState({ runningViralMSA: true })
-
-		let inputSeq;
-		let refSeq;
-
-		LOG("Reading input sequence file...")
-		if (this.state.useExampleInput) {
-			inputSeq = this.state.exampleInput;
-		} else {
-			inputSeq = await this.fileReaderReadFile(this.state.inputFile);
-		}
-
-		if (this.state.refFile) {
-			refSeq = await this.fileReaderReadFile(this.state.refFile);
-		} else {
-			// only need to provide refID when using a preloaded reference sequence and index
-			refSeq = await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_REF_GENOMES_DIR}` + this.state.preloadedRef + "/" + this.state.preloadedRef + ".fas")).text();
-		}
-
-		LOG("Running ViralMSA...")
-		this.postViralMSAMessage({ run: 'viralmsa', inputSeq, refSeq, 'omitRef': this.state.omitRef })
 	}
 
 	runMolecularClustering = (pairwiseFile) => {
@@ -680,7 +711,32 @@ export class App extends Component {
 		}
 
 		LOG("Molecular clustering finished!\n")
-		this.setState({ clusteringData, done: true, timeElapsed: (new Date().getTime() - this.state.startTime) / 1000 })
+		this.setState({ clusteringData })
+	}
+
+	runFasttree = async (alignmentFileText) => {
+		const CLI = this.state.CLI;
+
+		LOG("Running FastTree...")
+
+		// mount alignment file
+		// TODO: need to delete previous file if it exists?
+		await CLI.mount([{
+			name: "fasttree-input.fas",
+			data: alignmentFileText,
+		}]);
+
+		const command = `fasttree${this.state.gtrModel ? " -gtr" : ""}${this.state.gammaLikelihoods ? " -gamma" : ""} -nt fasttree-input.fas`;
+
+		LOG('\nRunning command: ' + command + '\n\n', false)
+		const output = await CLI.exec(command)
+		LOG(output.stderr, false);
+		CLI.mount([{
+			name: "fasttree-output.nwk",
+			data: output.stdout,
+		}]);
+		LOG("FastTree finished!\n")
+		this.setState({ downloadTree: true })
 	}
 
 	downloadAlignment = () => {
@@ -694,6 +750,10 @@ export class App extends Component {
 	downloadClusters = () => {
 		const tsvFormat = this.state.clusteringData.split("\n")[0].split("\t").length === 2;
 		this.downloadFile("clusters." + (tsvFormat ? "tsv" : "csv"), this.state.clusteringData);
+	}
+
+	downloadTree = async () => {
+		this.downloadFile("tree.nwk", await this.state.CLI.fs.readFile("fasttree-output.nwk", { encoding: "utf8" }));
 	}
 
 	downloadFile = (filename, text) => {
@@ -757,7 +817,7 @@ export class App extends Component {
 							</div>
 
 							<div className="form-check my-4">
-								<input className="form-check-input" type="checkbox" value="" id="skip-alignment" checked={this.state.skipAlignment} onChange={this.toggleSkipAlignment} />
+								<input className="form-check-input" type="checkbox" id="skip-alignment" checked={this.state.skipAlignment} onChange={this.toggleSkipAlignment} />
 								<label className="form-check-label" htmlFor="skip-alignment">
 									Skip Sequence Alignment
 								</label>
@@ -788,7 +848,7 @@ export class App extends Component {
 								</div>
 
 								<div className="form-check mt-4">
-									<input className="form-check-input" type="checkbox" value="" id="omit-ref" checked={this.state.omitRef} onChange={this.toggleOmitRef} />
+									<input className="form-check-input" type="checkbox" id="omit-ref" checked={this.state.omitRef} onChange={this.toggleOmitRef} />
 									<label className="form-check-label" htmlFor="omit-ref">
 										Omit Reference Sequence from Output
 									</label>
@@ -882,6 +942,25 @@ export class App extends Component {
 									onInput={this.setClusterThreshold}
 								/>
 							</div>
+
+							<h6 className="mt-5" id="fasttree-arguments" onClick={() => this.toggleFasttreeArgs()}>FastTree Arguments <i className={`bi bi-chevron-${this.state.fasttreeOpen ? 'up' : 'down'}`}></i></h6>
+							<hr></hr>
+
+							<div className={`${this.state.fasttreeOpen ? '' : 'd-none'}`}>
+								<div className="form-check my-4">
+									<input className="form-check-input" type="checkbox" id="gtr-model" checked={this.state.gtrModel} onChange={this.toggleGtrModel} />
+									<label className="form-check-label" htmlFor="gtr-model">
+										Use Generalized Time-Reversible (GTR) Model
+									</label>
+								</div>
+
+								<div className="form-check my-4">
+									<input className="form-check-input" type="checkbox" id="gamma-likelihoods" checked={this.state.gammaLikelihoods} onChange={this.toggleGammaLikelihoods} />
+									<label className="form-check-label" htmlFor="gamma-likelihoods">
+										Gamma Likelihoods
+									</label>
+								</div>
+							</div>
 						</div>
 
 						<button type="button" className="mt-3 btn btn-danger w-100" onClick={this.promptResetInput}>Reset Input</button>
@@ -908,6 +987,9 @@ export class App extends Component {
 							{this.state.clusteringData &&
 								<button type="button" className="btn btn-primary w-100 mx-3" onClick={this.downloadClusters}>Download Clusters</button>
 							}
+							{this.state.downloadTree &&
+								<button type="button" className="btn btn-primary w-100 mx-3" onClick={this.downloadTree}>Download Tree</button>
+							}
 						</div>
 						<div id="duration" className="my-3">
 							{this.state.timeElapsed &&
@@ -921,6 +1003,7 @@ export class App extends Component {
 								</Fragment>
 							}
 						</div>
+						{this.state.done && this.state.inputChanged && <p className="text-danger text-center">Warning: Form input has been interacted with since last run, run again to ensure latest output files.</p>}
 					</div>
 				</div>
 			</div>

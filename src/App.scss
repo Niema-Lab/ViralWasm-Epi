@@ -9,6 +9,10 @@ body {
 	font-size: 0.9rem !important;
 }
 
+p {
+	margin: 0;
+}
+
 .form-check-label {
 	font-size: 1rem;
 }
@@ -57,7 +61,7 @@ body {
 			}
 		}
 
-		#tn93-arguments, #clustering-arguments {
+		#tn93-arguments, #clustering-arguments, #fasttree-arguments {
 			user-select: none;
 			cursor: pointer;
 		}

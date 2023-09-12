@@ -36,12 +36,13 @@ export const DEFAULT_INPUT_STATE = {
 	compute: false,
 	selfDistance: false,
 
-	clusteringOpen: false,
 	clusterThreshold: 1.0,
 	// whether or not to copy the threshold from the tn93 tab
 	clusterThresholdCopy: true,
 	validClusterThreshold: true,
 
+	gtrModel: true,
+	gammaLikelihoods: true,
 };
 
 export const CLEAR_LOG = () => {
