@@ -13,7 +13,7 @@ import loadingCircle from './assets/loading.png'
 import {
 	LOG,
 	CLEAR_LOG,
-	OFFLINE_INSTRUCTIONS, 
+	OFFLINE_INSTRUCTIONS,
 	OFFLINE_INSTRUCTIONS_KEYWORDS,
 	VIRAL_MSA_REPO_STRUCTURE_LINK,
 	EXAMPLE_INPUT_FILE,
@@ -54,7 +54,6 @@ export class App extends Component {
 			startTime: new Date().getTime(),
 			timeElapsed: undefined,
 			running: false,
-			runningViralMSA: false,
 			done: false,
 			inputChanged: false,
 
@@ -64,9 +63,6 @@ export class App extends Component {
 			downloadPairwise: false,
 			downloadTree: false,
 
-			clusteringOpen: false,
-			tn93Open: false,
-			fasttreeOpen: false,
 			siteReady: false,
 			expandedContainer: undefined,
 		}
@@ -83,6 +79,12 @@ export class App extends Component {
 		this.fetchExampleInput();
 		this.fetchOfflineInstructions();
 		this.addOfflineInstructionsListener();
+	}
+
+	setStatePromise = (newState) => {
+		return new Promise((resolve) => {
+			this.setState(newState, resolve);
+		});
 	}
 
 	initBiowasm = async () => {
@@ -273,7 +275,6 @@ export class App extends Component {
 		// after finished
 		LOG("ViralMSA finished!\n")
 		this.setState({ viralMSADownloadResults: true, downloadAlignment: true })
-		await this.runTN93(false, pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" }));
 	}
 
 	postBiowasmMessage = async (message) => {
@@ -324,7 +325,7 @@ export class App extends Component {
 			LOG((await CLI.exec(command)).stderr, false);
 
 			// set file data (sequence alignment / map file)
-			this.setState({ samFileData: await CLI.fs.readFile("sequence.fas.sam", { encoding: "utf8" }) })
+			await this.setStatePromise({ samFileData: await CLI.fs.readFile("sequence.fas.sam", { encoding: "utf8" }) })
 
 			// cleanup
 			await this.biowasmClearFiles();
@@ -451,9 +452,9 @@ export class App extends Component {
 		this.setState({ selfDistance: event.target.checked, inputChanged: true })
 	}
 
-	toggleTN93Args = (open = undefined) => {
+	toggleMolecularClusteringArgs = (open = undefined) => {
 		this.setState(prevState => {
-			return { tn93Open: open === undefined ? !prevState.tn93Open : open }
+			return { performMolecularClustering: open === undefined ? !prevState.performMolecularClustering : open }
 		})
 	}
 
@@ -461,15 +462,9 @@ export class App extends Component {
 		this.setState({ clusterThreshold: event.target.value, inputChanged: true, validClusterThreshold: event.target.value >= 0 && event.target.value <= 1, clusterThresholdCopy: false })
 	}
 
-	toggleClusteringArgs = (open = undefined) => {
+	togglePhyloInferenceArgs = (open = undefined) => {
 		this.setState(prevState => {
-			return { clusteringOpen: open === undefined ? !prevState.clusteringOpen : open }
-		})
-	}
-
-	toggleFasttreeArgs = (open = undefined) => {
-		this.setState(prevState => {
-			return { fasttreeOpen: open === undefined ? !prevState.fasttreeOpen : open }
+			return { performPhyloInference: open === undefined ? !prevState.performPhyloInference : open }
 		})
 	}
 
@@ -506,22 +501,32 @@ export class App extends Component {
 			return;
 		}
 
+		if (this.state.performMolecularClustering && !this.validTN93()) {
+			alert("Please enter valid TN93 arguments.");
+			return;
+		}
+
+		if (this.state.skipAlignment && this.state.useExampleInput) {
+			alert('Cannot skip alignment when using example data.');
+			return;
+		}
+
 		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, downloadTree: false, clusteringData: undefined })
+		CLEAR_LOG();
 
+		let inputAln = undefined;
 		if (this.state.skipAlignment) {
-			if (this.state.useExampleInput) {
-				alert('Cannot skip alignment when using example data.');
-				return;
-			}
-
-			const inputAln = await this.fileReaderReadFile(this.state.inputFile);
-			if (this.validTN93()) {
-				await this.runTN93(true, inputAln);
-			}
-			await this.runFasttree(inputAln);
+			inputAln = await this.fileReaderReadFile(this.state.inputFile);
 		} else {
 			await this.runViralMSA();
-			await this.runFasttree(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" }));
+			inputAln = pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" });
+		}
+
+		if (this.state.performMolecularClustering) {
+			await this.runTN93(inputAln);
+		}
+		if (this.state.performPhyloInference) {
+			await this.runFasttree(inputAln);
 		}
 		this.setState({ done: true, timeElapsed: (new Date().getTime() - this.state.startTime) / 1000 })
 	}
@@ -536,7 +541,6 @@ export class App extends Component {
 		// validation passed
 		// clear console and runtime record
 		CLEAR_LOG();
-		this.setState({ runningViralMSA: true })
 
 		let inputSeq;
 		let refSeq;
@@ -563,7 +567,7 @@ export class App extends Component {
 		let valid = this.state.validThreshold && this.state.validFraction && this.state.validOverlap && this.state.validCounts && this.state.validProbability;
 
 		if (!valid) {
-			this.toggleTN93Args();
+			this.toggleMolecularClusteringArgs();
 			alert("Please enter valid TN93 arguments.");
 			return false;
 		}
@@ -571,12 +575,7 @@ export class App extends Component {
 		return true;
 	}
 
-	runTN93 = async (standalone, alignmentFile) => {
-		if (standalone) {
-			CLEAR_LOG();
-			this.setState({ runningViralMSA: false })
-		}
-
+	runTN93 = async (alignmentFile) => {
 		let command = 'tn93 -o';
 
 		if (this.state.format.includes('tsv')) {
@@ -740,7 +739,7 @@ export class App extends Component {
 	runFasttree = async (alignmentFileText) => {
 		const CLI = this.state.CLI;
 
-		LOG("Running FastTree...")
+		LOG("Running FastTree... (This takes significantly longer than the other steps)")
 
 		// mount alignment file
 		// TODO: need to delete previous file if it exists?
@@ -755,7 +754,7 @@ export class App extends Component {
 		const output = await CLI.exec(command)
 		LOG(output.stderr, false);
 		CLI.mount([{
-			name: "fasttree-output.nwk",
+			name: "phylogenetic-tree.nwk",
 			data: output.stdout,
 		}]);
 		LOG("FastTree finished!\n")
@@ -776,7 +775,7 @@ export class App extends Component {
 	}
 
 	downloadTree = async () => {
-		this.downloadFile("tree.nwk", await this.state.CLI.fs.readFile("fasttree-output.nwk", { encoding: "utf8" }));
+		this.downloadFile("tree.nwk", await this.state.CLI.fs.readFile("phylogenetic-tree.nwk", { encoding: "utf8" }));
 	}
 
 	downloadFile = (filename, text) => {
@@ -827,7 +826,7 @@ export class App extends Component {
 					Uses ViralMSA{this.state.viralMSAVersion}, minimap2 v{MINIMAP2_VERSION}, tn93 v{TN93_VERSION}, and FastTree v{FASTTREE_VERSION} via <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.<br />
 					<a href="" onClick={this.showOfflineInstructions}>Want to run offline? Click here!</a><br />
 				</p>
-				<div id="loading" className={this.state.siteReady ? 'd-none' : 'mt-4'}>
+				<div id="loading" className={this.state.siteReady ? 'd-none' : 'mt-5'}>
 					<h5 className="text-center me-2">Loading </h5>
 					<img className="loading-circle mb-2" src={loadingCircle} alt="loading" />
 				</div>
@@ -889,12 +888,49 @@ export class App extends Component {
 								</div>
 							</div>
 
-							<h6 className="mt-5" id="tn93-arguments" onClick={() => this.toggleTN93Args()}>TN93 Arguments <i className={`bi bi-chevron-${this.state.tn93Open ? 'up' : 'down'}`}></i></h6>
+							<div className="form-check mt-5">
+								<input className="form-check-input" type="checkbox" id="phylo-inference-check" checked={this.state.performPhyloInference} onChange={() => this.togglePhyloInferenceArgs()} />
+								<label className="form-check-label" htmlFor="phylo-inference-check">
+									<h6 id="perform-phylo-inference">&nbsp;Perform Phylogenetic Inference <i className={`bi bi-chevron-${this.state.performPhyloInference ? 'up' : 'down'}`}></i></h6>
+								</label>
+							</div>
 							<hr></hr>
 
-							<div className={`${this.state.tn93Open ? '' : 'd-none'}`}>
-								<p className="mb-2">Threshold: </p>
+							<div className={`${this.state.performPhyloInference ? '' : 'd-none'}`}>
+								<div className="form-check my-4">
+									<input className="form-check-input" type="checkbox" id="gtr-model" checked={this.state.gtrModel} onChange={this.toggleGtrModel} />
+									<label className="form-check-label" htmlFor="gtr-model">
+										Use Generalized Time-Reversible (GTR) Model
+									</label>
+								</div>
+
+								<div className="form-check my-4">
+									<input className="form-check-input" type="checkbox" id="gamma-likelihoods" checked={this.state.gammaLikelihoods} onChange={this.toggleGammaLikelihoods} />
+									<label className="form-check-label" htmlFor="gamma-likelihoods">
+										Gamma Likelihoods
+									</label>
+								</div>
+							</div>
+
+							<div className="form-check mt-5">
+								<input className="form-check-input" type="checkbox" id="molecular-clustering-check" checked={this.state.performMolecularClustering} onChange={() => this.toggleMolecularClusteringArgs()} />
+								<label className="form-check-label" htmlFor="molecular-clustering-check">
+									<h6 id="perform-molecular-clustering">&nbsp;Perform Molecular Clustering <i className={`bi bi-chevron-${this.state.performMolecularClustering ? 'up' : 'down'}`}></i></h6>
+								</label>
+							</div>
+							<hr></hr>
+
+							<div className={`${this.state.performMolecularClustering ? '' : 'd-none'}`}>
+								<p className="mb-2">TN93 Calculation Threshold: </p>
 								<input type="number" className={`form-control ${!this.state.validThreshold && 'is-invalid'}`} id="input-threshold" placeholder="Default: 1.0" min="0" max="1" step="0.01" value={this.state.threshold} onInput={this.setThreshold} />
+
+								<p className="mt-3 mb-2">Clustering Threshold: (Default: TN93 Calculation Threshold)</p>
+								<input type="number"
+									className={`form-control ${!(this.state.clusterThresholdCopy ? this.state.validThreshold : this.state.validClusterThreshold) && 'is-invalid'}`}
+									id="cluster-threshold" placeholder="Default: TN93 Threshold" min="0" max="1" step="0.01"
+									value={this.state.clusterThresholdCopy ? this.state.threshold : this.state.clusterThreshold}
+									onInput={this.setClusterThreshold}
+								/>
 
 								<p className="mt-3 mb-2">Ambiguous Nucleotide Strategy (Default: Resolve)</p>
 								<select className="form-select" id="input-ambiguity" value={this.state.ambigs} onChange={this.setAmbigs}>
@@ -963,38 +999,6 @@ export class App extends Component {
 									</label>
 								</div>
 							</div>
-
-							<h6 className="mt-5" id="clustering-arguments" onClick={() => this.toggleClusteringArgs()}>Molecular Clustering Arguments <i className={`bi bi-chevron-${this.state.clusteringOpen ? 'up' : 'down'}`}></i></h6>
-							<hr></hr>
-
-							<div className={`${this.state.clusteringOpen ? '' : 'd-none'}`}>
-								<p className="mb-2">Cluster Threshold: (Default: TN93 Threshold)</p>
-								<input type="number"
-									className={`form-control ${!(this.state.clusterThresholdCopy ? this.state.validThreshold : this.state.validClusterThreshold) && 'is-invalid'}`}
-									id="cluster-threshold" placeholder="Default: TN93 Threshold" min="0" max="1" step="0.01"
-									value={this.state.clusterThresholdCopy ? this.state.threshold : this.state.clusterThreshold}
-									onInput={this.setClusterThreshold}
-								/>
-							</div>
-
-							<h6 className="mt-5" id="fasttree-arguments" onClick={() => this.toggleFasttreeArgs()}>FastTree Arguments <i className={`bi bi-chevron-${this.state.fasttreeOpen ? 'up' : 'down'}`}></i></h6>
-							<hr></hr>
-
-							<div className={`${this.state.fasttreeOpen ? '' : 'd-none'}`}>
-								<div className="form-check my-4">
-									<input className="form-check-input" type="checkbox" id="gtr-model" checked={this.state.gtrModel} onChange={this.toggleGtrModel} />
-									<label className="form-check-label" htmlFor="gtr-model">
-										Use Generalized Time-Reversible (GTR) Model
-									</label>
-								</div>
-
-								<div className="form-check my-4">
-									<input className="form-check-input" type="checkbox" id="gamma-likelihoods" checked={this.state.gammaLikelihoods} onChange={this.toggleGammaLikelihoods} />
-									<label className="form-check-label" htmlFor="gamma-likelihoods">
-										Gamma Likelihoods
-									</label>
-								</div>
-							</div>
 						</div>
 
 						<button type="button" className="mt-3 btn btn-danger w-100" onClick={this.promptResetInput}>Reset Input</button>
@@ -1013,16 +1017,16 @@ export class App extends Component {
 						<textarea className="form-control" id="output-console" rows="3" spellCheck="false"></textarea>
 						<div id="download-buttons" className="mt-4">
 							{this.state.downloadAlignment &&
-								<button type="button" className="btn btn-primary w-100 mx-3" onClick={this.downloadAlignment}>Download Alignment</button>
+								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadAlignment}>Download Alignment</button>
 							}
 							{this.state.downloadPairwise &&
-								<button type="button" className="btn btn-primary w-100 mx-3" onClick={this.downloadPairwise}>Download Pairwise Distances</button>
+								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadPairwise}>Download Pairwise Distances</button>
 							}
 							{this.state.clusteringData &&
-								<button type="button" className="btn btn-primary w-100 mx-3" onClick={this.downloadClusters}>Download Clusters</button>
+								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadClusters}>Download Clusters</button>
 							}
 							{this.state.downloadTree &&
-								<button type="button" className="btn btn-primary w-100 mx-3" onClick={this.downloadTree}>Download Tree</button>
+								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadTree}>Download Phylogenetic Tree</button>
 							}
 						</div>
 						<div id="duration" className="my-3">

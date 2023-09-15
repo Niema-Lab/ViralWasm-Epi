@@ -38,11 +38,13 @@ export const DEFAULT_INPUT_STATE = {
 	compute: false,
 	selfDistance: false,
 
+	performMolecularClustering: false,
 	clusterThreshold: 1.0,
 	// whether or not to copy the threshold from the tn93 tab
 	clusterThresholdCopy: true,
 	validClusterThreshold: true,
-
+	
+	performPhyloInference: false,
 	gtrModel: true,
 	gammaLikelihoods: true,
 };
