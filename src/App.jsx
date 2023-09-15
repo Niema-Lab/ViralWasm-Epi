@@ -1,7 +1,7 @@
 // TODO: speed up load time / run time
 // TODO: incorporate gzip wherever and optimize memory usage
 import React, { Component, Fragment } from 'react'
-
+import { marked } from 'marked'
 import Aioli from "@biowasm/aioli/dist/aioli";
 
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -13,6 +13,8 @@ import loadingCircle from './assets/loading.png'
 import {
 	LOG,
 	CLEAR_LOG,
+	OFFLINE_INSTRUCTIONS, 
+	OFFLINE_INSTRUCTIONS_KEYWORDS,
 	VIRAL_MSA_REPO_STRUCTURE_LINK,
 	EXAMPLE_INPUT_FILE,
 	EXAMPLE_PRELOADED_REF,
@@ -31,6 +33,8 @@ export class App extends Component {
 		super(props)
 
 		this.state = {
+			showOfflineInstructions: false,
+			offlineInstructions: undefined,
 			REFS: undefined,
 			REF_NAMES: undefined,
 			viralMSAVersion: undefined,
@@ -77,6 +81,8 @@ export class App extends Component {
 		this.fetchPreloadedRef();
 		this.initPreloadedRefs();
 		this.fetchExampleInput();
+		this.fetchOfflineInstructions();
+		this.addOfflineInstructionsListener();
 	}
 
 	initBiowasm = async () => {
@@ -182,6 +188,22 @@ export class App extends Component {
 	fetchExampleInput = async () => {
 		this.setState({
 			exampleInput: await (await fetch(`${import.meta.env.BASE_URL || ''}${EXAMPLE_INPUT_FILE}`)).text()
+		})
+	}
+
+	fetchOfflineInstructions = async () => {
+		const res = await fetch(`${window.location.origin}${import.meta.env.BASE_URL || ''}${OFFLINE_INSTRUCTIONS}`);
+		const text = await res.text();
+		const html = marked(text);
+		const offlineInstructions = html.slice(html.indexOf(OFFLINE_INSTRUCTIONS_KEYWORDS) + OFFLINE_INSTRUCTIONS_KEYWORDS.length)
+		this.setState({ offlineInstructions });
+	}
+
+	addOfflineInstructionsListener = () => {
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') {
+				this.hideOfflineInstructions();
+			}
 		})
 	}
 
@@ -787,14 +809,23 @@ export class App extends Component {
 		});
 	}
 
+	showOfflineInstructions = (e) => {
+		e.preventDefault();
+		this.setState({ showOfflineInstructions: true })
+	}
+
+	hideOfflineInstructions = () => {
+		this.setState({ showOfflineInstructions: false })
+	}
+
 	render() {
 		return (
-			<div className="root">
+			<div className="root pb-5">
 				<h2 className="mt-5 mb-2 text-center" >ViralWasm-Epi</h2>
 				<p className="text-center my-3">
-					A serverless WebAssembly-based pipeline for multi-sequence alignment and molecular clustering. <br /> Uses ViralMSA{this.state.viralMSAVersion}, minimap2 v{MINIMAP2_VERSION}, tn93 v{TN93_VERSION}, and FastTree v{FASTTREE_VERSION} via <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.
-					<br />
-					Source code & offline version: <a href="https://github.com/niema-lab/ViralWasm-Epi/" target="_blank" rel="noreferrer">github.com/niema-lab/ViralWasm-Epi</a>.<br />
+					A serverless WebAssembly-based pipeline for multi-sequence alignment and molecular clustering. <br />
+					Uses ViralMSA{this.state.viralMSAVersion}, minimap2 v{MINIMAP2_VERSION}, tn93 v{TN93_VERSION}, and FastTree v{FASTTREE_VERSION} via <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.<br />
+					<a href="" onClick={this.showOfflineInstructions}>Want to run offline? Click here!</a><br />
 				</p>
 				<div id="loading" className={this.state.siteReady ? 'd-none' : 'mt-4'}>
 					<h5 className="text-center me-2">Loading </h5>
@@ -1006,9 +1037,22 @@ export class App extends Component {
 								</Fragment>
 							}
 						</div>
-						{this.state.done && this.state.inputChanged && <p className="text-danger text-center">Warning: Form input has been interacted with since last run, run again to ensure latest output files.</p>}
+						{this.state.done && this.state.inputChanged && <div className="text-danger text-center">Warning: Form input has been interacted with since last run, run again to ensure latest output files.</div>}
 					</div>
 				</div>
+				<footer className="d-flex w-100 justify-content-center">Source code:&nbsp;<a href="https://github.com/niema-lab/ViralWasm-Epi/" target="_blank" rel="noreferrer">github.com/niema-lab/ViralWasm-Consensus</a>.<br /></footer>
+
+				{this.state.showOfflineInstructions &&
+					<div id="offline-instructions">
+						<div className="card">
+							<button type="button" className="btn-close" aria-label="Close" onClick={this.hideOfflineInstructions}></button>
+							<div className="card-body">
+								<h5 className="card-title text-center mt-3 mb-4">Running ViralWasm-Epi Offline</h5>
+								<div dangerouslySetInnerHTML={{ __html: this.state.offlineInstructions }} />
+							</div>
+						</div>
+					</div>
+				}
 			</div>
 		)
 	}
