@@ -10,7 +10,7 @@ import webbrowser
 
 OS_TYPE = platform.system()
 
-PORT = 5000
+PORT = 5001
 # get current directory and set it as the directory to serve
 DIRECTORY = os.path.dirname(os.path.realpath(__file__)) + "/dist/"
 
@@ -61,7 +61,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 def start_server(port):
     try:
         with socketserver.ThreadingTCPServer(("", port), Handler) as httpd:
-            print(f'Visit http://localhost:{port} for ViralWasm-Epi. Please leave this window open! To stop, press Ctrl+C (multiple times if needed)')
+            print(f'Visit http://localhost:{port} for ViralWasm-Epi. Please leave this window open! To stop running the site, just close the window')
             webbrowser.open(f"http://localhost:{port}")
             httpd.serve_forever()
     except KeyboardInterrupt:
