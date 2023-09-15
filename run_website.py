@@ -20,8 +20,8 @@ def kill_port_unix(port):
         result = subprocess.check_output(command, shell=True).decode("utf-8")
         pids = result.strip().split("\n")
         for pid in pids:
-			if (pid == "0"):
-				continue
+            if (pid == "0"):
+                continue
             subprocess.run(f"kill -9 {pid}", shell=True)
     except subprocess.CalledProcessError as e:
         return
@@ -32,8 +32,8 @@ def kill_port_windows(port):
         result = subprocess.check_output(command, shell=True).decode("utf-8").strip().split("\n")
         for line in result:
             pid = line.split()[-1]
-			if (pid == "0"):
-				continue
+            if (pid == "0"):
+                continue
             subprocess.run(f"taskkill /F /PID {pid}", shell=True)
     except subprocess.CalledProcessError as e:
         return
