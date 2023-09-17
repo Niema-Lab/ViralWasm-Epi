@@ -367,22 +367,22 @@ export class App extends Component {
 	}
 
 	setInputFile = (event) => {
-		this.setState({ useExampleInput: false, inputFile: event.target.files[0], inputChanged: true })
+		this.setState({ useExampleInput: false, inputFile: event.target.files[0], validInputFile: true, inputChanged: true })
 	}
 
 	setPreloadedRef = (event) => {
-		this.setState({ preloadedRef: event.target.value === 'undefined' ? undefined : event.target.value, inputChanged: true })
+		this.setState({ preloadedRef: event.target.value === 'undefined' ? undefined : event.target.value, validRefFile: event.target.value !== 'undefined', inputChanged: true })
 	}
 
 	setRefFile = (event) => {
-		this.setState({ refFile: event.target.files[0], inputChanged: true })
+		this.setState({ refFile: event.target.files[0], inputChanged: true, validRefFile: true })
 	}
 
 	clearRefFile = () => {
 		if (this.state.refFile !== undefined) {
 			this.setState({ inputChanged: true })
 		}
-		this.setState({ refFile: undefined })
+		this.setState({ refFile: undefined, validRefFile: true })
 		document.getElementById('ref-sequence').value = null;
 	}
 
@@ -395,7 +395,7 @@ export class App extends Component {
 	}
 
 	setThreshold = (event) => {
-		this.setState({ threshold: event.target.value, inputChanged: true, validThreshold: event.target.value >= 0 && event.target.value <= 1 })
+		this.setState({ threshold: event.target.value, inputChanged: true, validThreshold: event.target.value >= 0 && event.target.value <= 1, validClusterThreshold: this.state.clusterThreshold >= 0 && this.state.clusterThreshold <= 1 && this.state.clusterThreshold <= event.target.value })
 	}
 
 	setAmbigs = (event) => {
@@ -459,7 +459,7 @@ export class App extends Component {
 	}
 
 	setClusterThreshold = (event) => {
-		this.setState({ clusterThreshold: event.target.value, inputChanged: true, validClusterThreshold: event.target.value >= 0 && event.target.value <= 1, clusterThresholdCopy: false })
+		this.setState({ clusterThreshold: event.target.value, inputChanged: true, validClusterThreshold: event.target.value >= 0 && event.target.value <= 1 && event.target.value <= this.state.threshold })
 	}
 
 	togglePhyloInferenceArgs = (open = undefined) => {
@@ -477,7 +477,18 @@ export class App extends Component {
 	}
 
 	toggleExampleData = () => {
-		this.setState(prevState => ({ useExampleInput: !prevState.useExampleInput, preloadedRef: prevState.useExampleInput ? prevState.preloadedRef : EXAMPLE_PRELOADED_REF, inputChanged: true }))
+		if (!this.state.useExampleInput) {
+			document.getElementById('ref-sequence').value = null;
+		}
+
+		this.setState(prevState => ({
+			useExampleInput: !prevState.useExampleInput,
+			validInputFile: prevState.useExampleInput ? prevState.validInputFile : true,
+			preloadedRef: prevState.useExampleInput ? prevState.preloadedRef : EXAMPLE_PRELOADED_REF,
+			refFile: prevState.useExampleInput ? prevState.refFile : undefined,
+			validRefFile: prevState.useExampleInput ? prevState.validRefFile : true,
+			inputChanged: true,
+		}))
 	}
 
 	promptResetInput = () => {
@@ -494,20 +505,31 @@ export class App extends Component {
 
 	runViralEpi = async () => {
 		const pyodide = this.state.pyodide;
-
+		
 		// validation
-		if (!this.state.useExampleInput && this.state.inputFile === undefined) {
-			alert("Please upload an input sequence file.");
+		if (this.state.skipAlignment && this.state.useExampleInput) {
+			alert('Cannot skip alignment when using example data.');
 			return;
+		}
+
+		let valid = true;
+		if (!this.state.useExampleInput && this.state.inputFile === undefined) {
+			this.setState({ validInputFile: false })
+			valid = false;
+		}
+
+		if (!this.state.useExampleInput && !this.state.preloadedRef && this.state.refFile === undefined) {
+			this.setState({ validRefFile: false })
+			valid = false;
 		}
 
 		if (this.state.performMolecularClustering && !this.validTN93()) {
-			alert("Please enter valid TN93 arguments.");
-			return;
+			valid = false;
 		}
 
-		if (this.state.skipAlignment && this.state.useExampleInput) {
-			alert('Cannot skip alignment when using example data.');
+		if (!valid) {
+			alert("Invalid input. Please check your input and try again.")
+			LOG("Invalid input. Please check your input and try again.")
 			return;
 		}
 
@@ -564,15 +586,7 @@ export class App extends Component {
 	}
 
 	validTN93 = () => {
-		let valid = this.state.validThreshold && this.state.validFraction && this.state.validOverlap && this.state.validCounts && this.state.validProbability;
-
-		if (!valid) {
-			this.toggleMolecularClusteringArgs();
-			alert("Please enter valid TN93 arguments.");
-			return false;
-		}
-
-		return true;
+		return this.state.validThreshold && this.state.validFraction && this.state.validOverlap && this.state.validCounts && this.state.validProbability && this.state.validClusterThreshold;
 	}
 
 	runTN93 = async (alignmentFile) => {
@@ -665,7 +679,7 @@ export class App extends Component {
 
 			const [seq1, seq2, dist] = this.state.format.includes('tsv') ? line.split("\t") : line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
 
-			if (dist > (this.state.clusterThresholdCopy ? this.state.threshold : this.state.clusterThreshold)) {
+			if (dist > this.state.clusterThreshold) {
 				continue;
 			}
 
@@ -841,7 +855,7 @@ export class App extends Component {
 						<div id="ref-seq-container">
 							<div id="input-sequences-container" className="mb-3">
 								<label htmlFor="input-sequences" className="form-label">Input Sequence File ({this.state.skipAlignment ? 'Alignment File' : 'FASTA Format'})</label>
-								<input className="form-control" type="file" id="input-sequences" onChange={this.setInputFile} />
+								<input className={`form-control ${!this.state.validInputFile && 'is-invalid'}`} type="file" id="input-sequences" onChange={this.setInputFile} />
 								{this.state.useExampleInput &&
 									<p className="mt-2 mb-0"><strong>Using Loaded Example Data: <a
 										href={`${import.meta.env.BASE_URL || ''}${EXAMPLE_INPUT_FILE}`}
@@ -857,25 +871,27 @@ export class App extends Component {
 							</div>
 
 							<div className={`${this.state.skipAlignment ? 'd-none' : ''}`}>
-								<label htmlFor="common-sequences" className="form-label mt-2">
-									Select Preloaded Reference Sequence
-									{this.state.refFile !== undefined &&
-										<span className='mt-2 text-warning'>
-											<strong>&nbsp;(Warning: Using Uploaded Reference File)</strong>
-										</span>
-									}
-								</label>
-								<select className="form-select" aria-label="Default select example" id="common-sequences" value={this.state.preloadedRef ?? ''} onChange={this.setPreloadedRef}>
-									<option value="">Select a Reference Sequence</option>
-									{this.state.preloadRefOptions}
-								</select>
+								<div className={`${this.state.refFile !== undefined ? 'disabled-input' : ''}`}>
+									<label htmlFor="common-sequences" className="form-label mt-2">
+										Select Preloaded Reference Sequence
+										{this.state.refFile !== undefined &&
+											<span className='mt-2 text-warning'>
+												<strong>&nbsp;(Using Uploaded Sequence)</strong>
+											</span>
+										}
+									</label>
+									<select className={`form-select ${!this.state.validRefFile && 'is-invalid'}`} aria-label="Default select example" id="common-sequences" value={this.state.preloadedRef ?? ''} onChange={this.setPreloadedRef}>
+										<option value="">Select a Reference Sequence</option>
+										{this.state.preloadRefOptions}
+									</select>
+								</div>
 
 								<h5 className="mt-2 text-center">&#8213; OR &#8213;</h5>
 
 								<div>
 									<label htmlFor="ref-sequence" className="form-label">Upload Reference Sequence</label>
-									<div className="input-group">
-										<input className="form-control" type="file" id="ref-sequence" onChange={this.setRefFile} aria-describedby="ref-sequence-addon" />
+									<div className={`input-group`}>
+										<input className={`form-control ${!this.state.validRefFile && 'is-invalid'}`} type="file" id="ref-sequence" onChange={this.setRefFile} aria-describedby="ref-sequence-addon" />
 										<button className="btn btn-outline-danger" type="button" id="ref-sequence-addon" onClick={this.clearRefFile}><i className="bi bi-trash"></i></button>
 									</div>
 								</div>
@@ -926,9 +942,9 @@ export class App extends Component {
 
 								<p className="mt-3 mb-2">Clustering Threshold: (Default: TN93 Calculation Threshold)</p>
 								<input type="number"
-									className={`form-control ${!(this.state.clusterThresholdCopy ? this.state.validThreshold : this.state.validClusterThreshold) && 'is-invalid'}`}
+									className={`form-control ${!(this.state.validClusterThreshold) && 'is-invalid'}`}
 									id="cluster-threshold" placeholder="Default: TN93 Threshold" min="0" max="1" step="0.01"
-									value={this.state.clusterThresholdCopy ? this.state.threshold : this.state.clusterThreshold}
+									value={this.state.clusterThreshold}
 									onInput={this.setClusterThreshold}
 								/>
 
@@ -1046,18 +1062,19 @@ export class App extends Component {
 				</div>
 				<footer className="d-flex w-100 justify-content-center">Source code:&nbsp;<a href="https://github.com/niema-lab/ViralWasm-Epi/" target="_blank" rel="noreferrer">github.com/niema-lab/ViralWasm-Consensus</a>.<br /></footer>
 
-				{this.state.showOfflineInstructions &&
-					<div id="offline-instructions">
-						<div className="card">
-							<button type="button" className="btn-close" aria-label="Close" onClick={this.hideOfflineInstructions}></button>
-							<div className="card-body">
-								<h5 className="card-title text-center mt-3 mb-4">Running ViralWasm-Epi Offline</h5>
-								<div dangerouslySetInnerHTML={{ __html: this.state.offlineInstructions }} />
-							</div>
-						</div>
+				{
+			this.state.showOfflineInstructions &&
+			<div id="offline-instructions">
+				<div className="card">
+					<button type="button" className="btn-close" aria-label="Close" onClick={this.hideOfflineInstructions}></button>
+					<div className="card-body">
+						<h5 className="card-title text-center mt-3 mb-4">Running ViralWasm-Epi Offline</h5>
+						<div dangerouslySetInnerHTML={{ __html: this.state.offlineInstructions }} />
 					</div>
-				}
+				</div>
 			</div>
+		}
+			</div >
 		)
 	}
 }

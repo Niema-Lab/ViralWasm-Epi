@@ -14,12 +14,15 @@ export const PATH_TO_PYODIDE_ROOT = "/home/pyodide/";
 export const DEFAULT_INPUT_STATE = {
 	useExampleInput: false,
 	inputFile: undefined,
+	validInputFile: true,
+	
 	skipAlignment: false,
 	preloadedRef: undefined,
 	refFile: undefined,
+	validRefFile: true,
 	omitRef: false,
 
-	threshold: 1.0,
+	threshold: 0.015,
 	validThreshold: true,
 	ambigs: "resolve",
 	ambigsString: "",
@@ -39,9 +42,7 @@ export const DEFAULT_INPUT_STATE = {
 	selfDistance: false,
 
 	performMolecularClustering: false,
-	clusterThreshold: 1.0,
-	// whether or not to copy the threshold from the tn93 tab
-	clusterThresholdCopy: true,
+	clusterThreshold: 0.015,
 	validClusterThreshold: true,
 	
 	performPhyloInference: false,

@@ -17,6 +17,12 @@ code {
 	font-size: 1rem;
 }
 
+.disabled-input {
+	opacity: 0.6;
+	user-select: none;
+	pointer-events: none;
+}
+
 .loading-circle {
 	height: 20px;
 	animation: loading-anim 2s linear infinite;
