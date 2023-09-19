@@ -505,7 +505,7 @@ export class App extends Component {
 
 	runViralEpi = async () => {
 		const pyodide = this.state.pyodide;
-		
+
 		// validation
 		if (this.state.skipAlignment && this.state.useExampleInput) {
 			alert('Cannot skip alignment when using example data.');
@@ -550,7 +550,9 @@ export class App extends Component {
 		if (this.state.performPhyloInference) {
 			await this.runFasttree(inputAln);
 		}
-		this.setState({ done: true, timeElapsed: (new Date().getTime() - this.state.startTime) / 1000 })
+		const timeElapsed = (new Date().getTime() - this.state.startTime) / 1000;
+		this.setState({ done: true, timeElapsed })
+		LOG(`Done! Time Elapsed: ${timeElapsed.toFixed(3)} seconds`);
 	}
 
 	runViralMSA = async () => {
@@ -1063,17 +1065,17 @@ export class App extends Component {
 				<footer className="d-flex w-100 justify-content-center">Source code:&nbsp;<a href="https://github.com/niema-lab/ViralWasm-Epi/" target="_blank" rel="noreferrer">github.com/niema-lab/ViralWasm-Consensus</a>.<br /></footer>
 
 				{
-			this.state.showOfflineInstructions &&
-			<div id="offline-instructions">
-				<div className="card">
-					<button type="button" className="btn-close" aria-label="Close" onClick={this.hideOfflineInstructions}></button>
-					<div className="card-body">
-						<h5 className="card-title text-center mt-3 mb-4">Running ViralWasm-Epi Offline</h5>
-						<div dangerouslySetInnerHTML={{ __html: this.state.offlineInstructions }} />
+					this.state.showOfflineInstructions &&
+					<div id="offline-instructions">
+						<div className="card">
+							<button type="button" className="btn-close" aria-label="Close" onClick={this.hideOfflineInstructions}></button>
+							<div className="card-body">
+								<h5 className="card-title text-center mt-3 mb-4">Running ViralWasm-Epi Offline</h5>
+								<div dangerouslySetInnerHTML={{ __html: this.state.offlineInstructions }} />
+							</div>
+						</div>
 					</div>
-				</div>
-			</div>
-		}
+				}
 			</div >
 		)
 	}
