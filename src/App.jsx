@@ -1062,7 +1062,7 @@ export class App extends Component {
 						{this.state.done && this.state.inputChanged && <div className="text-danger text-center">Warning: Form input has been interacted with since last run, run again to ensure latest output files.</div>}
 					</div>
 				</div>
-				<footer className="d-flex w-100 justify-content-center">Source code:&nbsp;<a href="https://github.com/niema-lab/ViralWasm-Epi/" target="_blank" rel="noreferrer">github.com/niema-lab/ViralWasm-Consensus</a>.<br /></footer>
+				<footer className="d-flex w-100 justify-content-center">Source code:&nbsp;<a href="https://github.com/niema-lab/ViralWasm-Epi/" target="_blank" rel="noreferrer">github.com/niema-lab/ViralWasm-Epi</a>.<br /></footer>
 
 				{
 					this.state.showOfflineInstructions &&
