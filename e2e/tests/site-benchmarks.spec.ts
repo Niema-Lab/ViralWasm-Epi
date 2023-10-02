@@ -16,18 +16,18 @@ const BENCHMARK_TESTS = {
 		outputFolder: '400/',
 		timeout: 30000
 	},
-	// '4000': {
-	// 	alignmentFiles: ['./e2e/data/4000.01.true.fas'],
-	// 	referenceFile: './e2e/data/MT072688.fasta',
-	// 	outputFolder: '4000/',
-	// 	timeout: 60000
-	// },
-	// '40000': {
-	// 	alignmentFiles: ['./e2e/data/40000.01.true.fas'],
-	// 	referenceFile: './e2e/data/MT072688.fasta',
-	// 	outputFolder: '40000/',
-	// 	timeout: 180000
-	// },
+	'4000': {
+		alignmentFiles: ['./e2e/data/4000.01.true.fas'],
+		referenceFile: './e2e/data/MT072688.fasta',
+		outputFolder: '4000/',
+		timeout: 60000
+	},
+	'40000': {
+		alignmentFiles: ['./e2e/data/40000.01.true.fas'],
+		referenceFile: './e2e/data/MT072688.fasta',
+		outputFolder: '40000/',
+		timeout: 180000
+	},
 }
 
 for (const [name, { referenceFile, alignmentFiles, outputFolder, timeout }] of Object.entries(BENCHMARK_TESTS)) {
@@ -37,9 +37,9 @@ for (const [name, { referenceFile, alignmentFiles, outputFolder, timeout }] of O
 }
 
 const runBenchmark = async (page, browserName: string, alignmentFiles: string[], referenceFile: string, downloadedLocation: string, runTimeout: number) => {
-	test.setTimeout(runTimeout + 25000);
+	test.setTimeout(runTimeout + 45000);
 	await page.goto('/');
-	await expect(page.getByTestId('output-text')).toHaveValue(/ViralMSA loaded./, { timeout: 10000 });
+	await expect(page.getByTestId('output-text')).toHaveValue(/ViralMSA loaded./, { timeout: 30000 });
 	await page.getByTestId('input-sequences').setInputFiles(alignmentFiles);
 	await page.getByTestId('ref-sequence').setInputFiles(referenceFile);
 	await page.getByTestId('run').click();
