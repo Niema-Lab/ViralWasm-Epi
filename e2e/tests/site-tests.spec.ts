@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 	})
 
 	await page.goto('/');
-	await expect(page.getByTestId('output-text')).toHaveValue(/ViralMSA loaded./);
+	await expect(page.getByTestId('output-text')).toHaveValue(/ViralMSA loaded./, { timeout: 10000 });
 });
 
 test.afterEach(async ({ page }) => {

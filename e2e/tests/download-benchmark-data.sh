@@ -12,3 +12,4 @@ curl -LO https://github.com/niemasd/ViralMSA-Paper/raw/master/data/SARSCOV2/400/
 gzip -d -f 400.01.true.fas.gz
 curl -LO https://raw.githubusercontent.com/niemasd/ViralMSA-Paper/master/data/SARSCOV2/MT072688.fasta
 curl -LO https://raw.githubusercontent.com/niemasd/viralmsa/master/ref_genomes/NC_001802/NC_001802.fas
+curl -LO https://raw.githubusercontent.com/niemasd/viralmsa/master/example/example_hiv.fas
