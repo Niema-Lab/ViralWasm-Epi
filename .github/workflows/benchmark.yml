@@ -22,14 +22,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Download data for benchmarks
-        run: |
-          cd e2e/tests/
-          bash download-benchmark-data.sh
       - name: Setup cli benchmark dependencies
         run: |
           cd e2e/tests/
           bash setup-baseline-benchmarks.sh
+      - name: Download data for benchmarks
+        run: |
+          cd e2e/tests/
+          bash download-benchmark-data.sh
       - uses: actions/setup-node@v3
         with:
           node-version: 18
