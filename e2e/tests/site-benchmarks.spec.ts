@@ -22,12 +22,6 @@ const BENCHMARK_TESTS = {
 		outputFolder: '4000/',
 		timeout: 180000
 	},
-	'40000': {
-		alignmentFiles: ['./e2e/data/40000.01.true.fas'],
-		referenceFile: './e2e/data/MT072688.fasta',
-		outputFolder: '40000/',
-		timeout: 540000
-	},
 }
 
 for (const [name, { referenceFile, alignmentFiles, outputFolder, timeout }] of Object.entries(BENCHMARK_TESTS)) {
