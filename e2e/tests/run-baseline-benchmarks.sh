@@ -6,7 +6,7 @@ run_benchmark() {
 	LOG_DIR=../../benchmarks/$1/cli/
 	rm -rf $LOG_DIR
 
-	/usr/bin/time -v ViralMSA.py -e email@address.com -s sequence.fas.sam -o $LOG_DIR -r MT072688.fasta --viralmsa_dir cache 2>time_output.log
+	/usr/bin/time -v ViralMSA.py -e email@address.com -s sequence.fas.sam -o $OUT_DIR -r MT072688.fasta --viralmsa_dir cache 2>time_output.log
 
 	grep "User time (seconds): " time_output.log | awk '{print $4}' > "$LOG_DIR/time.log"
 	grep "Maximum resident set size (kbytes): " time_output.log | awk '{print $6}' > "$LOG_DIR/memory.log"
