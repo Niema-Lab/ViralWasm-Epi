@@ -123,9 +123,11 @@ export class App extends Component {
 		// load micropip, a package manager for Pyodide
 		await pyodide.loadPackage("micropip");
 		const micropip = pyodide.pyimport("micropip");
+		LOG('Micropip loaded.')
 
 		// install biopython, a ViralMSA dependency
 		await micropip.install('biopython');
+		LOG('Biopython loaded.')
 
 		// create cache directory for ViralMSA sequences and indexes 
 		pyodide.FS.mkdir(PATH_TO_PYODIDE_ROOT + 'cache');
@@ -135,6 +137,7 @@ export class App extends Component {
 
 		// load in ViralMSAWeb.py
 		const ViralMSAWeb = await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_WEB_LINK}`)).text()
+		LOG('ViralMSAWeb loaded.')
 
 		// get REFS and REF_NAMES for preloaded reference sequences and indexes
 		pyodide.runPython(ViralMSAWeb)
