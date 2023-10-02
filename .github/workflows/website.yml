@@ -1,5 +1,4 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+name: deploy website
 
 on:
   # Runs on pushes targeting the default branch
@@ -21,26 +20,53 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Single deploy job since we're just deploying
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Set up Node
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: 'npm'
-          cache-dependency-path: ./package-lock.json
       - name: Install dependencies
-        run: npm install
-      - name: Build
+        run: npm ci
+      - name: Build site for Playwright and offline mode
         env: 
-          VITE_OFFLINE_VERSION: false
+          VITE_OFFLINE_VERSION: true
+        run: npm run build
+      - name: Get installed Playwright version
+        id: playwright-version
+        run: echo "PLAYWRIGHT_VERSION=$(node -e "console.log(require('./package.json').devDependencies['@playwright/test'])")" >> $GITHUB_ENV
+      - name: Cache Playwright binaries
+        uses: actions/cache@v3
+        id: playwright-cache
+        with:
+          path: |
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+      - run: npx playwright install --with-deps
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+      - run: npx playwright install-deps
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+      - name: Run Playwright deployment tests
+        run: npx playwright test site-tests.spec.ts
+      - name: Push offline mode to master
+        run: |  
+          zip -r viralwasm-epi-offline.zip dist/ run_website.py
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'action@github.com'
+          git add viralwasm-epi-offline.zip
+
+          # Check for changes
+          if git diff-index --quiet HEAD --; then
+            # No changes
+            echo "No changes to commit"
+          else
+            # Changes detected
+            git commit -m "Add benchmarks / dist folder"
+            git push origin master
+          fi
+      - name: Build for github pages
         run: npm run build
       - name: Setup Pages
         uses: actions/configure-pages@v3
@@ -52,21 +78,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v1
-      - name: Push Offline Mode to Master
-        env: 
-          VITE_OFFLINE_VERSION: true
-        run: |  
-          npm run build
-          git config --global user.name 'GitHub Actions'
-          git config --global user.email 'action@github.com'
-          git add .
-
-          # Check for changes
-          if git diff-index --quiet HEAD --; then
-            # No changes
-            echo "No changes to commit"
-          else
-            # Changes detected
-            git commit -m "Add dist folder"
-            git push origin master
-          fi

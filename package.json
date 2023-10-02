@@ -7,7 +7,9 @@
     "dev": "vite --host",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+	"host": "python3 run_website.py",
+    "host-dev": "http-server dist/ -p 8000 -c-1"
   },
   "dependencies": {
     "@biowasm/aioli": "^3.1.0",
@@ -20,6 +22,7 @@
     "sass": "^1.64.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.38.1",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.0.3",
@@ -27,6 +30,7 @@
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.3",
+    "http-server": "^14.1.1",
     "vite": "^4.4.5"
   }
 }
