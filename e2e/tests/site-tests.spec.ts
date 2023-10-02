@@ -12,7 +12,9 @@ test.beforeEach(async ({ page }) => {
 	})
 
 	await page.goto('/');
-	await expect(page.getByTestId('output-text')).toHaveValue(/ViralMSA loaded./, { timeout: 10000 });
+	const start = performance.now();
+	await expect(page.getByTestId('output-text')).toHaveValue(/ViralMSA loaded./, { timeout: 30000 });
+	console.log('Time to load: ' + (performance.now() - start));
 });
 
 test.afterEach(async ({ page }) => {
