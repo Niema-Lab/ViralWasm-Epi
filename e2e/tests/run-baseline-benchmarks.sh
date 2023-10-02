@@ -1,6 +1,4 @@
 cd ../data
-rm -rf ../../benchmarks
-mkdir ../../benchmarks
 # $1: output directory
 # $2: reads file
 run_benchmark() {

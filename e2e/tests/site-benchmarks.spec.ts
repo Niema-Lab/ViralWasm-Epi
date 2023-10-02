@@ -3,31 +3,15 @@ import fs from 'fs';
 
 import { downloadFile, BENCHMARK_DIR} from './constants';
 
-const BENCHMARK_TESTS = {
-	'example': {
-		alignmentFiles: ['./e2e/data/example_hiv.fas'], 
-		referenceFile: './e2e/data/NC_001802.fas', 
-		outputFolder: 'example/',
-		timeout: 10000
-	},
-	'400': {
-		alignmentFiles: ['./e2e/data/400.01.true.fas'],
-		referenceFile: './e2e/data/MT072688.fasta',
-		outputFolder: '400/',
-		timeout: 60000
-	},
-	'4000': {
-		alignmentFiles: ['./e2e/data/4000.01.true.fas'],
-		referenceFile: './e2e/data/MT072688.fasta',
-		outputFolder: '4000/',
-		timeout: 180000
-	},
-}
+const BENCHMARK_TESTS = ['100', '200', '400', '1000', '2000', '4000'];
+const RUN_COUNT = 2;
 
-for (const [name, { referenceFile, alignmentFiles, outputFolder, timeout }] of Object.entries(BENCHMARK_TESTS)) {
-	test('run benchmark - ' + name, async ({ page, browserName }) => {
-		await runBenchmark(page, browserName, alignmentFiles, referenceFile, outputFolder, timeout);
-	});
+for (let i = 0; i < RUN_COUNT; i++) {
+	for (const sequenceSize of BENCHMARK_TESTS) {
+		test('run benchmark - ' + sequenceSize + ', run ' + i, async ({ page, browserName }) => {
+			await runBenchmark(page, browserName, ['./e2e/data/' + sequenceSize + '.01.true.fas'], './e2e/data/MT072688.fasta', sequenceSize + '. ' + i + '/', parseInt(sequenceSize) * 150);
+		});
+	}
 }
 
 const runBenchmark = async (page, browserName: string, alignmentFiles: string[], referenceFile: string, downloadedLocation: string, runTimeout: number) => {
