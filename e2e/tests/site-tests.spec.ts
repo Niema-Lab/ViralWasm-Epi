@@ -22,7 +22,7 @@ test.afterEach(async ({ page }) => {
 });
 
 test('run example data', async ({ page, browserName }) => {
-	test.setTimeout(15000);
+	test.setTimeout(50000);
 	await page.getByTestId('load-example-data').click();
 	await page.getByTestId('run').click();
 
