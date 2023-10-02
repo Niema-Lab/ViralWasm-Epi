@@ -63,3 +63,7 @@ jobs:
         with:
           name: benchmarks
           path: benchmarks/
+      - uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-run-outputs
+          path: benchmark-run-outputs/

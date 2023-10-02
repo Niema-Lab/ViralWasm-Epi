@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
 
-import { downloadFile, BENCHMARK_DIR} from './constants';
+import { downloadFile, BENCHMARK_DIR, BENCHMARK_OUTPUT_DIR} from './constants';
 
 const BENCHMARK_TESTS = ['100', '200', '400', '1000', '2000', '4000'];
 const RUN_COUNT = 2;
@@ -26,6 +26,6 @@ const runBenchmark = async (page, browserName: string, alignmentFiles: string[],
 	const timeOutputLine = (await page.getByTestId('output-text').inputValue()).split('\n').filter(line => line.includes('ViralMSA finished'))[0];
 	const timeElapsed = timeOutputLine?.split(' ')?.slice(2)?.join('')?.replace(/[^0-9\.]/g, '') ?? '-1';
 	await expect(parseFloat(timeElapsed)).toBeGreaterThan(0);
-	await downloadFile(page, 'Download Alignment', BENCHMARK_DIR + downloadedLocation + browserName + '/');
+	await downloadFile(page, 'Download Alignment', BENCHMARK_OUTPUT_DIR + downloadedLocation + browserName + '/');
 	fs.appendFileSync(BENCHMARK_DIR + downloadedLocation + browserName + '/' + '/time.log', timeElapsed);
 }
