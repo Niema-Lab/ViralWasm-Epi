@@ -8,6 +8,7 @@ sudo mv minimap2 /usr/local/bin/
 minimap2 --version
 
 # Install ViralMSA 
+pip3 install biopython
 cd ~
 wget "https://raw.githubusercontent.com/niemasd/ViralMSA/master/ViralMSA.py"
 chmod a+x ViralMSA.py

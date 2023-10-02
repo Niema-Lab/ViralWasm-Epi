@@ -270,10 +270,11 @@ export class App extends Component {
 		pyodide.globals.set("arguments", args);
 
 		// run ViralMSAWeb.py
+		const viralMSAStartTime = performance.now();
 		pyodide.runPython(this.state.ViralMSAWeb);
 
 		// after finished
-		LOG("ViralMSA finished!\n")
+		LOG(`ViralMSA finished in ${((performance.now() - viralMSAStartTime) / 1000).toFixed(3)} seconds`)
 		this.setState({ viralMSADownloadResults: true, downloadAlignment: true })
 	}
 
@@ -857,7 +858,7 @@ export class App extends Component {
 						<div id="ref-seq-container">
 							<div id="input-sequences-container" className="mb-3">
 								<label htmlFor="input-sequences" className="form-label">Input Sequence File ({this.state.skipAlignment ? 'Alignment File' : 'FASTA Format'})</label>
-								<input className={`form-control ${!this.state.validInputFile && 'is-invalid'}`} type="file" id="input-sequences" onChange={this.setInputFile} />
+								<input className={`form-control ${!this.state.validInputFile && 'is-invalid'}`} type="file" id="input-sequences" data-testid="input-sequences" onChange={this.setInputFile} />
 								{this.state.useExampleInput &&
 									<p className="mt-2 mb-0"><strong>Using Loaded Example Data: <a
 										href={`${import.meta.env.BASE_URL || ''}${EXAMPLE_INPUT_FILE}`}
@@ -893,7 +894,7 @@ export class App extends Component {
 								<div>
 									<label htmlFor="ref-sequence" className="form-label">Upload Reference Sequence</label>
 									<div className={`input-group`}>
-										<input className={`form-control ${!this.state.validRefFile && 'is-invalid'}`} type="file" id="ref-sequence" onChange={this.setRefFile} aria-describedby="ref-sequence-addon" />
+										<input className={`form-control ${!this.state.validRefFile && 'is-invalid'}`} type="file" id="ref-sequence" data-testid="ref-sequence" onChange={this.setRefFile} aria-describedby="ref-sequence-addon" />
 										<button className="btn btn-outline-danger" type="button" id="ref-sequence-addon" onClick={this.clearRefFile}><i className="bi bi-trash"></i></button>
 									</div>
 								</div>
@@ -1020,10 +1021,10 @@ export class App extends Component {
 						</div>
 
 						<button type="button" className="mt-3 btn btn-danger w-100" onClick={this.promptResetInput}>Reset Input</button>
-						<button type="button" className={`mt-3 w-100 btn ${this.state.useExampleInput ? 'btn-success' : 'btn-warning'}`} onClick={this.toggleExampleData}>
+						<button type="button" className={`mt-3 w-100 btn ${this.state.useExampleInput ? 'btn-success' : 'btn-warning'}`} onClick={this.toggleExampleData} data-testid="load-example-data">
 							Load Example Data {this.state.useExampleInput ? '(Currently Using Example Data)' : ''}
 						</button>
-						<button type="button" className="mt-3 btn btn-primary w-100" onClick={this.runViralEpi}>Run ViralWasm-Epi</button>
+						<button type="button" className="mt-3 btn btn-primary w-100" onClick={this.runViralEpi} data-testid="run">Run ViralWasm-Epi</button>
 					</div>
 					<div id="output" className={`${this.state.expandedContainer === 'output' && 'full-width-container'} ${this.state.expandedContainer === 'input' && 'd-none'}`}>
 						<div id="output-header" className="mb-3">
@@ -1032,7 +1033,7 @@ export class App extends Component {
 								<i className={`bi bi-${this.state.expandedContainer === 'output' ? 'arrows-angle-contract' : 'arrows-fullscreen'}`} onClick={() => this.toggleExpandContainer('output')}></i>
 							</h4>
 						</div>
-						<textarea className="form-control" id="output-console" rows="3" spellCheck="false"></textarea>
+						<textarea className="form-control" id="output-console" data-testid="output-text" datarows="3" spellCheck="false"></textarea>
 						<div id="download-buttons" className="mt-4">
 							{this.state.downloadAlignment &&
 								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadAlignment}>Download Alignment</button>
@@ -1049,7 +1050,7 @@ export class App extends Component {
 						</div>
 						<div id="duration" className="my-3">
 							{this.state.timeElapsed &&
-								<p id="duration-text">Total runtime: {this.state.timeElapsed} seconds</p>
+								<p id="duration-text" data-testid="duration-text">Total runtime: {this.state.timeElapsed} seconds</p>
 							}
 							{this.state.running && !this.state.done &&
 								<Fragment>
