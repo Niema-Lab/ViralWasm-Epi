@@ -6,10 +6,10 @@ import { downloadFile, BENCHMARK_DIR, BENCHMARK_OUTPUT_DIR} from './constants';
 const BENCHMARK_TESTS = ['100', '200', '400', '1000', '2000', '4000'];
 const RUN_COUNT = 2;
 
-for (let i = 0; i < RUN_COUNT; i++) {
+for (let i = 1; i <= RUN_COUNT; i++) {
 	for (const sequenceSize of BENCHMARK_TESTS) {
 		test('run benchmark - ' + sequenceSize + ', run ' + i, async ({ page, browserName }) => {
-			await runBenchmark(page, browserName, ['./e2e/data/' + sequenceSize + '.01.true.fas'], './e2e/data/MT072688.fasta', sequenceSize + '. ' + i + '/', parseInt(sequenceSize) * 150);
+			await runBenchmark(page, browserName, ['./e2e/data/' + sequenceSize + '.01.true.fas'], './e2e/data/MT072688.fasta', sequenceSize + '.' + i + '/', parseInt(sequenceSize) * 150);
 		});
 	}
 }
