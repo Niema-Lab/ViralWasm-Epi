@@ -27,5 +27,9 @@ const runBenchmark = async (page, browserName: string, alignmentFiles: string[],
 	const timeElapsed = timeOutputLine?.split(' ')?.slice(2)?.join('')?.replace(/[^0-9\.]/g, '') ?? '-1';
 	await expect(parseFloat(timeElapsed)).toBeGreaterThan(0);
 	await downloadFile(page, 'Download Alignment', BENCHMARK_OUTPUT_DIR + downloadedLocation + browserName + '/');
-	fs.appendFileSync(BENCHMARK_DIR + downloadedLocation + browserName + '/' + '/time.log', timeElapsed);
+
+	if (!fs.existsSync(BENCHMARK_DIR + downloadedLocation + browserName)){
+		fs.mkdirSync(BENCHMARK_DIR + downloadedLocation + browserName, { recursive: true });
+	}
+	fs.writeFileSync(BENCHMARK_DIR + downloadedLocation + browserName + '/time.log', timeElapsed);
 }
