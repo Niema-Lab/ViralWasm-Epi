@@ -63,7 +63,7 @@ jobs:
             echo "No changes to commit"
           else
             # Changes detected
-            git commit -m "Add benchmarks / dist folder"
+            git commit -m "Add offline mode zip"
             git push origin master
           fi
       - name: Build for github pages
