@@ -123,11 +123,9 @@ export class App extends Component {
 		// load micropip, a package manager for Pyodide
 		await pyodide.loadPackage("micropip");
 		const micropip = pyodide.pyimport("micropip");
-		LOG('Micropip loaded.')
 
 		// install biopython, a ViralMSA dependency
 		await micropip.install('biopython');
-		LOG('Biopython loaded.')
 
 		// create cache directory for ViralMSA sequences and indexes 
 		pyodide.FS.mkdir(PATH_TO_PYODIDE_ROOT + 'cache');
@@ -137,7 +135,6 @@ export class App extends Component {
 
 		// load in ViralMSAWeb.py
 		const ViralMSAWeb = await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_WEB_LINK}`)).text()
-		LOG('ViralMSAWeb loaded.')
 
 		// get REFS and REF_NAMES for preloaded reference sequences and indexes
 		pyodide.runPython(ViralMSAWeb)
@@ -216,9 +213,14 @@ export class App extends Component {
 		const pyodide = this.state.pyodide;
 
 		if (message.run) {
-			await this.postBiowasmMessage({ runMinimap2: 'buildIndex', command: 'minimap2 -t 1 -d target.fas.mmi target.fas', inputSeq: message.inputSeq, refSeq: message.refSeq });
-			await this.postBiowasmMessage({ runMinimap2: 'alignment', command: 'minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o sequence.fas.sam target.fas.mmi sequence.fas', inputSeq: message.inputSeq, refSeq: message.refSeq });
-			await this.pyodideRunViralMSA(this.state.samFileData, message.refSeq, message.omitRef);
+			if (message.isSAM) {
+				await this.pyodideRunViralMSA(message.inputSeq, message.refSeq, message.omitRef);
+			} else {
+				// TODO: gzip before running
+				await this.postBiowasmMessage({ runMinimap2: 'buildIndex', command: 'minimap2 -t 1 -d target.fas.mmi target.fas', inputSeq: message.inputSeq, refSeq: message.refSeq });
+				await this.postBiowasmMessage({ runMinimap2: 'alignment', command: 'minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o sequence.fas.sam target.fas.mmi sequence.fas', inputSeq: message.inputSeq, refSeq: message.refSeq });
+				await this.pyodideRunViralMSA(this.state.samFileData, message.refSeq, message.omitRef);
+			}
 		} else if (message.getResults) {
 			if (!this.state.viralMSADownloadResults) {
 				return;
@@ -562,7 +564,7 @@ export class App extends Component {
 	runViralMSA = async () => {
 		// further validation
 		if (this.state.preloadedRef === undefined && this.state.refFile === undefined) {
-			alert("Please upload or select a reference sequence file.");
+			alert("Please select a reference sequence file.");
 			return;
 		}
 
@@ -572,11 +574,14 @@ export class App extends Component {
 
 		let inputSeq;
 		let refSeq;
+		let isSAM; 
 
 		LOG("Reading input sequence file...")
 		if (this.state.useExampleInput) {
 			inputSeq = this.state.exampleInput;
+			isSAM = false;
 		} else {
+			isSAM = this.state.inputFile.name.toLowerCase().endsWith('.sam');
 			inputSeq = await this.fileReaderReadFile(this.state.inputFile);
 		}
 
@@ -588,7 +593,7 @@ export class App extends Component {
 		}
 
 		LOG("Running ViralMSA...")
-		await this.postViralMSAMessage({ run: 'viralmsa', inputSeq, refSeq, 'omitRef': this.state.omitRef })
+		await this.postViralMSAMessage({ run: 'viralmsa', inputSeq, isSAM, refSeq, 'omitRef': this.state.omitRef })
 	}
 
 	validTN93 = () => {
@@ -860,7 +865,7 @@ export class App extends Component {
 						</div>
 						<div id="ref-seq-container">
 							<div id="input-sequences-container" className="mb-3">
-								<label htmlFor="input-sequences" className="form-label">Input Sequence File ({this.state.skipAlignment ? 'Alignment File' : 'FASTA Format'})</label>
+								<label htmlFor="input-sequences" className="form-label">Input Sequence File ({this.state.skipAlignment ? 'Alignment File' : 'SAM, FASTA Format'})</label>
 								<input className={`form-control ${!this.state.validInputFile && 'is-invalid'}`} type="file" id="input-sequences" data-testid="input-sequences" onChange={this.setInputFile} />
 								{this.state.useExampleInput &&
 									<p className="mt-2 mb-0"><strong>Using Loaded Example Data: <a
@@ -882,7 +887,7 @@ export class App extends Component {
 										Select Preloaded Reference Sequence
 										{this.state.refFile !== undefined &&
 											<span className='mt-2 text-warning'>
-												<strong>&nbsp;(Using Uploaded Sequence)</strong>
+												<strong>&nbsp;(Using Selected Sequence)</strong>
 											</span>
 										}
 									</label>
@@ -895,7 +900,7 @@ export class App extends Component {
 								<h5 className="mt-2 text-center">&#8213; OR &#8213;</h5>
 
 								<div>
-									<label htmlFor="ref-sequence" className="form-label">Upload Reference Sequence</label>
+									<label htmlFor="ref-sequence" className="form-label">Select Reference Sequence</label>
 									<div className={`input-group`}>
 										<input className={`form-control ${!this.state.validRefFile && 'is-invalid'}`} type="file" id="ref-sequence" data-testid="ref-sequence" onChange={this.setRefFile} aria-describedby="ref-sequence-addon" />
 										<button className="btn btn-outline-danger" type="button" id="ref-sequence-addon" onClick={this.clearRefFile}><i className="bi bi-trash"></i></button>
