@@ -10,6 +10,8 @@ run_benchmark() {
 
 	mkdir -p $LOG_DIR
 	grep "User time (seconds): " time_output.log | awk '{print $4}' > "$LOG_DIR/time.log"
+	echo "$LOG_DIR/time.log"
+	cat "$LOG_DIR/time.log"
 	grep "Maximum resident set size (kbytes): " time_output.log | awk '{print $6}' > "$LOG_DIR/memory.log"
 
 	rm -rf cache

@@ -4,7 +4,7 @@ import fs from 'fs';
 import { downloadFile, BENCHMARK_DIR, BENCHMARK_OUTPUT_DIR} from './constants';
 
 const BENCHMARK_TESTS = ['100', '200', '400', '1000', '2000', '4000'];
-const RUN_COUNT = 2;
+const RUN_COUNT = 10;
 
 for (let i = 1; i <= RUN_COUNT; i++) {
 	for (const sequenceSize of BENCHMARK_TESTS) {
@@ -32,4 +32,6 @@ const runBenchmark = async (page, browserName: string, alignmentFiles: string[],
 		fs.mkdirSync(BENCHMARK_DIR + downloadedLocation + browserName, { recursive: true });
 	}
 	fs.writeFileSync(BENCHMARK_DIR + downloadedLocation + browserName + '/time.log', timeElapsed);
+	console.log(downloadedLocation);
+	console.log(timeElapsed);
 }
