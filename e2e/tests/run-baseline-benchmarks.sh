@@ -1,12 +1,16 @@
 cd ../data
-# $1: output directory
-# $2: sam file
-run_benchmark() {
-	OUT_DIR=../../benchmark-run-outputs/$1
-	LOG_DIR=../../benchmarks/$1/cli/
-	rm -rf $LOG_DIR
 
-	/usr/bin/time -v ViralMSA.py -e email@address.com -s $2 -o $OUT_DIR -r MT072688.fasta --viralmsa_dir cache 2>time_output.log
+ViralMSA.py --help
+
+# $1: sam file
+# $2: output directory
+run_benchmark() {
+	OUT_DIR=../../benchmark-run-outputs/$2/cli
+	LOG_DIR=../../benchmarks/$2/cli
+	rm -rf $LOG_DIR
+	rm -rf $OUT_DIR
+
+	/usr/bin/time -v ViralMSA.py -e email@address.com -s "$1.fas.sam" -o $OUT_DIR -r MT072688.fasta --viralmsa_dir cache 2>time_output.log
 
 	mkdir -p $LOG_DIR
 	grep "User time (seconds): " time_output.log | awk '{print $4}' >"$LOG_DIR/time.log"
@@ -21,6 +25,6 @@ run_benchmark() {
 
 for r in {1..10}; do
 	for n in 100 200 400 1000 2000 4000; do
-		run_benchmark "$n.$r" "$n.fas.sam"
+		run_benchmark "$n" "$n.$r"
 	done
 done
