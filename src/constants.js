@@ -1,6 +1,8 @@
 export const MINIMAP2_VERSION = "2.22";
 export const TN93_VERSION = "1.0.11";
 export const FASTTREE_VERSION = "2.1.11";
+export const LSD2_VERSION = "2.3";
+
 export const OUTPUT_ID = "output-console";
 export const OFFLINE_INSTRUCTIONS = "/README.md";
 export const OFFLINE_INSTRUCTIONS_KEYWORDS = "<h3>ViralWasm-Epi Offline</h3>\n";
@@ -11,6 +13,7 @@ export const VIRAL_MSA_REF_GENOMES_DIR = "data/ref_genomes/";
 export const EXAMPLE_INPUT_FILE = "data/example_hiv.fas";
 export const EXAMPLE_PRELOADED_REF = "NC_001802";
 export const PATH_TO_PYODIDE_ROOT = "/home/pyodide/";
+export const FASTTREE_OUTPUT_FILE = "phylogenetic-tree.nwk";
 export const DEFAULT_INPUT_STATE = {
 	useExampleInput: false,
 	inputFile: undefined,
@@ -22,7 +25,7 @@ export const DEFAULT_INPUT_STATE = {
 	validRefFile: true,
 	omitRef: false,
 
-	threshold: 0.015,
+	threshold: 1.0,
 	validThreshold: true,
 	ambigs: "resolve",
 	ambigsString: "",
@@ -48,6 +51,25 @@ export const DEFAULT_INPUT_STATE = {
 	performPhyloInference: false,
 	gtrModel: true,
 	gammaLikelihoods: true,
+
+	performLSD2: false,
+	LSD2DateFile: undefined,
+	validLSD2DateFile: true,
+	LSD2OutgroupFile: undefined,
+	validLSD2OutgroupFile: true,
+	removeOutgroups: false,
+	inferRoot: false,
+	rootDate: "",
+	nullBranchLength: -1.0,
+	minBranchLength: 0,
+	validMinBranchLength: true,
+	stdDevRelaxedClock: 0.2,
+	validStdDevRelaxedClock: true,
+	roundTime: 365,
+	validRoundTime: true,
+	rateLowerBound: 1e-10,
+	validRateLowerBound: true,
+	LSD2Variance: "1",
 };
 
 export const CLEAR_LOG = () => {

@@ -25,7 +25,9 @@ import {
 	MINIMAP2_VERSION,
 	TN93_VERSION,
 	FASTTREE_VERSION,
-	PATH_TO_PYODIDE_ROOT
+	LSD2_VERSION,
+	PATH_TO_PYODIDE_ROOT,
+	FASTTREE_OUTPUT_FILE
 } from './constants.js';
 
 export class App extends Component {
@@ -101,11 +103,16 @@ export class App extends Component {
 				tool: "fasttree",
 				version: FASTTREE_VERSION,
 				urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/fasttree`,
+			}, {
+				tool: "lsd2",
+				version: LSD2_VERSION,
+				urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/lsd2`,
 			}], {
 				printInterleaved: false,
 			})
+		}, async () => {
+			LOG('Biowasm loaded.');
 		})
-		LOG('Biowasm loaded.');
 	}
 
 	initPyodide = async () => {
@@ -421,11 +428,11 @@ export class App extends Component {
 	}
 
 	setOverlap = (event) => {
-		this.setState({ overlap: event.target.value, inputChanged: true, validOverlap: event.target.value >= 1 && event.target.value == parseInt(event.target.value) })
+		this.setState({ overlap: event.target.value, inputChanged: true, validOverlap: event.target.value >= 1 || event.target.value === ""})
 	}
 
 	setCounts = (event) => {
-		this.setState({ counts: event.target.value, inputChanged: true, validCounts: event.target.value.length === 1 })
+		this.setState({ counts: event.target.value, inputChanged: true, validCounts: event.target.value.length <= 1 })
 	}
 
 	setProbability = (event) => {
@@ -458,20 +465,16 @@ export class App extends Component {
 		this.setState({ selfDistance: event.target.checked, inputChanged: true })
 	}
 
-	toggleMolecularClusteringArgs = (open = undefined) => {
-		this.setState(prevState => {
-			return { performMolecularClustering: open === undefined ? !prevState.performMolecularClustering : open }
-		})
+	toggleMolecularClusteringArgs = () => {
+		this.setState(prevState => ({ performMolecularClustering: !prevState.performMolecularClustering, inputChanged: true }))
 	}
 
 	setClusterThreshold = (event) => {
 		this.setState({ clusterThreshold: event.target.value, inputChanged: true, validClusterThreshold: event.target.value >= 0 && event.target.value <= 1 && event.target.value <= this.state.threshold })
 	}
 
-	togglePhyloInferenceArgs = (open = undefined) => {
-		this.setState(prevState => {
-			return { performPhyloInference: open === undefined ? !prevState.performPhyloInference : open }
-		})
+	togglePhyloInferenceArgs = () => {
+		this.setState(prevState => ({ performPhyloInference: !prevState.performPhyloInference, performLSD2: !prevState.performPhyloInference && prevState.performLSD2, inputChanged: true }))
 	}
 
 	toggleGtrModel = () => {
@@ -480,6 +483,54 @@ export class App extends Component {
 
 	toggleGammaLikelihoods = () => {
 		this.setState(prevState => ({ gammaLikelihoods: !prevState.gammaLikelihoods, inputChanged: true }))
+	}
+
+	toggleLSD2 = () => {
+		this.setState(prevState => ({ performLSD2: !prevState.performLSD2, inputChanged: true }))
+	}
+
+	setLSD2DateFile = (event) => {
+		this.setState({ LSD2DateFile: event.target.files[0], inputChanged: true })
+	}
+
+	setLSD2OutgroupFile = (event) => {
+		this.setState({ LSD2OutgroupFile: event.target.files[0], inputChanged: true })
+	}
+
+	toggleRemoveOutgroups = () => {
+		this.setState(prevState => ({ removeOutgroups: !prevState.removeOutgroups, inputChanged: true }))
+	}
+
+	toggleInferRoot = () => {
+		this.setState(prevState => ({ inferRoot: !prevState.inferRoot, inputChanged: true }))
+	}
+
+	setRootDate = (event) => {
+		this.setState({ rootDate: event.target.value, inputChanged: true })
+	}
+
+	setNullBranchLength = (event) => {
+		this.setState({ nullBranchLength: event.target.value, inputChanged: true })
+	}
+
+	setMinBranchLength = (event) => {
+		this.setState({ minBranchLength: event.target.value, inputChanged: true, validMinBranchLength: event.target.value >= 0 })
+	}
+
+	setStdDevRelaxedClock = (event) => {
+		this.setState({ stdDevRelaxedClock: event.target.value, inputChanged: true, validStdDevRelaxedClock: event.target.value >= 0 })
+	}
+
+	setRoundTime = (event) => {
+		this.setState({ roundTime: event.target.value, inputChanged: true, validRoundTime: event.target.value >= 0 })
+	}
+
+	setRateLowerBound = (event) => {
+		this.setState({ rateLowerBound: event.target.value, inputChanged: true, validRateLowerBound: event.target.value >= 0 })
+	}
+
+	setLSD2Variance = (event) => {
+		this.setState({ LSD2Variance: event.target.value, inputChanged: true })
 	}
 
 	toggleExampleData = () => {
@@ -556,6 +607,9 @@ export class App extends Component {
 		if (this.state.performPhyloInference) {
 			await this.runFasttree(inputAln);
 		}
+		if (this.state.performLSD2) {
+			await this.runLSD2(await this.state.CLI.fs.readFile(FASTTREE_OUTPUT_FILE, { encoding: "utf8" }));
+		}
 		const timeElapsed = (new Date().getTime() - this.state.startTime) / 1000;
 		this.setState({ done: true, timeElapsed })
 		LOG(`Done! Time Elapsed: ${timeElapsed.toFixed(3)} seconds`);
@@ -574,7 +628,7 @@ export class App extends Component {
 
 		let inputSeq;
 		let refSeq;
-		let isSAM; 
+		let isSAM;
 
 		LOG("Reading input sequence file...")
 		if (this.state.useExampleInput) {
@@ -612,13 +666,13 @@ export class App extends Component {
 		}
 
 		// add threshold
-		command += " -t " + (this.state.threshold === "" ? "1.0" : this.state.threshold);
+		command += " -t " + (this.state.threshold === "" ? DEFAULT_INPUT_STATE.threshold : this.state.threshold);
 
 		// add ambigs
-		command += " -a " + (this.state.ambigs === "string" ? this.state.ambigsString : this.state.ambigs);
+		command += " -a " + (this.state.ambigs === "string" ? DEFAULT_INPUT_STATE.ambigs : this.state.ambigs);
 
 		// add fraction
-		command += " -g " + (this.state.fraction === "" ? "1.0" : this.state.fraction);
+		command += " -g " + (this.state.fraction === "" ? DEFAULT_INPUT_STATE.fraction : this.state.fraction);
 
 		// add format
 		if (!this.state.countFlag) {
@@ -626,13 +680,13 @@ export class App extends Component {
 		}
 
 		// add overlap
-		command += " -l " + (this.state.overlap === "" ? "0" : this.state.overlap);
+		command += " -l " + (this.state.overlap === "" ? DEFAULT_INPUT_STATE.overlap : this.state.overlap);
 
 		// add counts
-		command += " -d " + `"${(this.state.counts === "" ? ":" : this.state.counts)}"`;
+		command += " -d " + `"${(this.state.counts === "" ? DEFAULT_INPUT_STATE.counts : this.state.counts)}"`;
 
 		// add probability
-		command += " -u " + (this.state.probability === "" ? "1" : this.state.probability);
+		command += " -u " + (this.state.probability === "" ? DEFAULT_INPUT_STATE.probability : this.state.probability);
 
 		// add bootstrap
 		if (this.state.bootstrap) {
@@ -675,6 +729,7 @@ export class App extends Component {
 
 	runMolecularClustering = (pairwiseFile) => {
 		LOG("Running molecular clustering...")
+		const clusteringThreshold = this.state.clusterThreshold === "" ? DEFAULT_INPUT_STATE.clusterThreshold : this.state.clusterThreshold;
 		const delimiter = this.state.format.includes('tsv') ? "\t" : ",";
 		let clusteringData = "SequenceName" + delimiter + "ClusterNumber\n";
 		const clusters = new Map();
@@ -690,7 +745,7 @@ export class App extends Component {
 
 			const [seq1, seq2, dist] = this.state.format.includes('tsv') ? line.split("\t") : line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
 
-			if (dist > this.state.clusterThreshold) {
+			if (dist > clusteringThreshold) {
 				continue;
 			}
 
@@ -779,7 +834,7 @@ export class App extends Component {
 		const output = await CLI.exec(command)
 		LOG(output.stderr, false);
 		CLI.mount([{
-			name: "phylogenetic-tree.nwk",
+			name: FASTTREE_OUTPUT_FILE,
 			data: output.stdout,
 		}]);
 		LOG("FastTree finished!\n")
@@ -800,7 +855,7 @@ export class App extends Component {
 	}
 
 	downloadTree = async () => {
-		this.downloadFile("tree.nwk", await this.state.CLI.fs.readFile("phylogenetic-tree.nwk", { encoding: "utf8" }));
+		this.downloadFile("tree.nwk", await this.state.CLI.fs.readFile(FASTTREE_OUTPUT_FILE, { encoding: "utf8" }));
 	}
 
 	downloadFile = (filename, text) => {
@@ -863,9 +918,9 @@ export class App extends Component {
 								<i className={`bi bi-${this.state.expandedContainer === 'input' ? 'arrows-angle-contract' : 'arrows-fullscreen'}`} onClick={() => this.toggleExpandContainer('input')}></i>
 							</h4>
 						</div>
-						<div id="ref-seq-container">
+						<div id="ref-seq-container" className="pb-4">
 							<div id="input-sequences-container" className="mb-3">
-								<label htmlFor="input-sequences" className="form-label">Input Sequence File ({this.state.skipAlignment ? 'Alignment File' : 'SAM, FASTA Format'})</label>
+								<label htmlFor="input-sequences" className="form-label">Input Sequence File ({this.state.skipAlignment ? 'Alignment File' : 'SAM, FASTA Format'}) <span className="text-danger"> *</span></label>
 								<input className={`form-control ${!this.state.validInputFile && 'is-invalid'}`} type="file" id="input-sequences" data-testid="input-sequences" onChange={this.setInputFile} />
 								{this.state.useExampleInput &&
 									<p className="mt-2 mb-0"><strong>Using Loaded Example Data: <a
@@ -916,30 +971,6 @@ export class App extends Component {
 							</div>
 
 							<div className="form-check mt-5">
-								<input className="form-check-input" type="checkbox" id="phylo-inference-check" checked={this.state.performPhyloInference} onChange={() => this.togglePhyloInferenceArgs()} />
-								<label className="form-check-label" htmlFor="phylo-inference-check">
-									<h6 id="perform-phylo-inference">&nbsp;Perform Phylogenetic Inference <i className={`bi bi-chevron-${this.state.performPhyloInference ? 'up' : 'down'}`}></i></h6>
-								</label>
-							</div>
-							<hr></hr>
-
-							<div className={`${this.state.performPhyloInference ? '' : 'd-none'}`}>
-								<div className="form-check my-4">
-									<input className="form-check-input" type="checkbox" id="gtr-model" checked={this.state.gtrModel} onChange={this.toggleGtrModel} />
-									<label className="form-check-label" htmlFor="gtr-model">
-										Use Generalized Time-Reversible (GTR) Model
-									</label>
-								</div>
-
-								<div className="form-check my-4">
-									<input className="form-check-input" type="checkbox" id="gamma-likelihoods" checked={this.state.gammaLikelihoods} onChange={this.toggleGammaLikelihoods} />
-									<label className="form-check-label" htmlFor="gamma-likelihoods">
-										Gamma Likelihoods
-									</label>
-								</div>
-							</div>
-
-							<div className="form-check mt-5">
 								<input className="form-check-input" type="checkbox" id="molecular-clustering-check" checked={this.state.performMolecularClustering} onChange={() => this.toggleMolecularClusteringArgs()} />
 								<label className="form-check-label" htmlFor="molecular-clustering-check">
 									<h6 id="perform-molecular-clustering">&nbsp;Perform Molecular Clustering <i className={`bi bi-chevron-${this.state.performMolecularClustering ? 'up' : 'down'}`}></i></h6>
@@ -951,10 +982,10 @@ export class App extends Component {
 								<p className="mb-2">TN93 Calculation Threshold: </p>
 								<input type="number" className={`form-control ${!this.state.validThreshold && 'is-invalid'}`} id="input-threshold" placeholder="Default: 1.0" min="0" max="1" step="0.01" value={this.state.threshold} onInput={this.setThreshold} />
 
-								<p className="mt-3 mb-2">Clustering Threshold: (Default: TN93 Calculation Threshold)</p>
+								<p className="mt-3 mb-2">Clustering Threshold: </p>
 								<input type="number"
 									className={`form-control ${!(this.state.validClusterThreshold) && 'is-invalid'}`}
-									id="cluster-threshold" placeholder="Default: TN93 Threshold" min="0" max="1" step="0.01"
+									id="cluster-threshold" placeholder="Default: 0.015" min="0" max="1" step="0.01"
 									value={this.state.clusterThreshold}
 									onInput={this.setClusterThreshold}
 								/>
@@ -1025,6 +1056,85 @@ export class App extends Component {
 										-0: report distances between each sequence and itself
 									</label>
 								</div>
+							</div>
+
+							<div className="form-check mt-5">
+								<input className="form-check-input" type="checkbox" id="phylo-inference-check" checked={this.state.performPhyloInference} onChange={() => this.togglePhyloInferenceArgs()} />
+								<label className="form-check-label" htmlFor="phylo-inference-check">
+									<h6 id="perform-phylo-inference">&nbsp;Perform Phylogenetic Inference <i className={`bi bi-chevron-${this.state.performPhyloInference ? 'up' : 'down'}`}></i></h6>
+								</label>
+							</div>
+							<hr></hr>
+
+							<div className={`${this.state.performPhyloInference ? '' : 'd-none'}`}>
+								<div className="form-check my-4">
+									<input className="form-check-input" type="checkbox" id="gtr-model" checked={this.state.gtrModel} onChange={this.toggleGtrModel} />
+									<label className="form-check-label" htmlFor="gtr-model">
+										Use Generalized Time-Reversible (GTR) Model
+									</label>
+								</div>
+
+								<div className="form-check my-4">
+									<input className="form-check-input" type="checkbox" id="gamma-likelihoods" checked={this.state.gammaLikelihoods} onChange={this.toggleGammaLikelihoods} />
+									<label className="form-check-label" htmlFor="gamma-likelihoods">
+										Gamma Likelihoods
+									</label>
+								</div>
+							</div>
+
+							<div className={`form-check mt-5 ${!this.state.performPhyloInference && 'disabled-input'}`}>
+								<input className="form-check-input" type="checkbox" id="lsd2-check" checked={this.state.performLSD2} onChange={() => this.toggleLSD2()} />
+								<label className="form-check-label" htmlFor="lsd2-check">
+									<h6 id="perform-lsd2">&nbsp;Perform Tree Rooting and Dating <i className={`bi bi-chevron-${this.state.performLSD2 ? 'up' : 'down'}`}></i></h6>
+								</label>
+							</div>
+							<hr></hr>
+
+							<div className={`${this.state.performLSD2 ? '' : 'd-none'}`}>
+								<label htmlFor="lsd2-date-file" className="form-label">Input Date File <span className="text-danger"> *</span></label>
+								<input className={`form-control ${!this.state.validLSD2DateFile && 'is-invalid'}`} type="file" id="lsd2-date-file" data-testid="lsd2-date-file" onChange={this.setLSD2DateFile} />
+
+								<label htmlFor="lsd2-outgroup-file" className="form-label mt-3">Outgroup File</label>
+								<input className={`form-control`} type="file" id="lsd2-outgroup-file" data-testid="lsd2-outgroup-file" onChange={this.setLSD2OutgroupFile} />
+
+								<div className={`${this.state.LSD2OutgroupFile === undefined ? 'disabled-input' : ''} form-check my-4`}>
+									<input className="form-check-input" type="checkbox" id="input-remove-outgroups" checked={this.state.removeOutgroups} onChange={this.toggleRemoveOutgroups} />
+									<label className="form-check-label" htmlFor="input-remove-outgroups">
+										&nbsp;Remove Outgroups
+									</label>
+								</div>
+
+								<div className={`${this.state.LSD2OutgroupFile === undefined ? '' : 'disabled-input'} form-check my-4`}>
+									<input className="form-check-input" type="checkbox" id="input-infer-root" checked={this.state.inferRoot} onChange={this.toggleInferRoot} />
+									<label className="form-check-label" htmlFor="input-infer-root">
+										&nbsp;Infer Root
+									</label>
+								</div>
+
+								<p className="mt-3 mb-2">Root Date:</p>
+								<input type="text" className={`form-control`} id="root-date" placeholder='Default: ""' value={this.state.rootDate} onInput={this.setRootDate} />
+
+								<p className="mt-3 mb-2">Null Branch Length:</p>
+								<input type="number" className={`form-control`} id="null-branch-length" placeholder="Default: -1.0" value={this.state.nullBranchLength} onInput={this.setNullBranchLength} />
+
+								<p className="mt-3 mb-2">Minimum Branch Length:</p>
+								<input type="number" className={`form-control ${!this.state.validMinBranchLength && 'is-invalid'}`} id="min-branch-length" placeholder="Default: 0" min="0" value={this.state.minBranchLength} onInput={this.setMinBranchLength} />
+
+								<p className="mt-3 mb-2">Standard Deviation of Relaxed Clock:</p>
+								<input type="number" className={`form-control ${!this.state.validStdDevRelaxedClock && 'is-invalid'}`} id="min-branch-length" placeholder="Default: 0.2" min="0" value={this.state.stdDevRelaxedClock} onInput={this.setStdDevRelaxedClock} />
+
+								<p className="mt-3 mb-2">Round Time:</p>
+								<input type="number" className={`form-control ${!this.state.validRoundTime && 'is-invalid'}`} id="round-time" placeholder="Default: 365" min="0" value={this.state.roundTime} onInput={this.setRoundTime} />
+
+								<p className="mt-3 mb-2">Rate Lower Bound:</p>
+								<input type="number" className={`form-control ${!this.state.validRateLowerBound && 'is-invalid'}`} id="rate-lower-bound" placeholder="Default: 1e-10" min="0" value={this.state.rateLowerBound} onInput={this.setRateLowerBound} />
+
+								<p className="mt-3 mb-2">Variance (Default: Use Input Branch Lenghts)</p>
+								<select className="form-select" id="lsd2-variance" value={this.state.LSD2Variance} onChange={this.setLSD2Variance}>
+									<option value="1">Use input branch lengths</option>
+									<option value="2">Use estimated branch lengths</option>
+									<option value="0">Don't use variance</option>
+								</select>
 							</div>
 						</div>
 
