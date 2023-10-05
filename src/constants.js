@@ -13,7 +13,7 @@ export const VIRAL_MSA_REF_GENOMES_DIR = "data/ref_genomes/";
 export const EXAMPLE_INPUT_FILE = "data/example_hiv.fas";
 export const EXAMPLE_PRELOADED_REF = "NC_001802";
 export const PATH_TO_PYODIDE_ROOT = "/home/pyodide/";
-export const FASTTREE_OUTPUT_FILE = "phylogenetic-tree.nwk";
+export const FASTTREE_OUTPUT_FILE = "phylogenetic-tree.newick";
 export const DEFAULT_INPUT_STATE = {
 	useExampleInput: false,
 	inputFile: undefined,
@@ -56,9 +56,8 @@ export const DEFAULT_INPUT_STATE = {
 	LSD2DateFile: undefined,
 	validLSD2DateFile: true,
 	LSD2OutgroupFile: undefined,
-	validLSD2OutgroupFile: true,
 	removeOutgroups: false,
-	inferRoot: false,
+	inferRoot: true,
 	rootDate: "",
 	nullBranchLength: -1.0,
 	minBranchLength: 0,

@@ -224,8 +224,8 @@ export class App extends Component {
 				await this.pyodideRunViralMSA(message.inputSeq, message.refSeq, message.omitRef);
 			} else {
 				// TODO: gzip before running
-				await this.postBiowasmMessage({ runMinimap2: 'buildIndex', command: 'minimap2 -t 1 -d target.fas.mmi target.fas', inputSeq: message.inputSeq, refSeq: message.refSeq });
-				await this.postBiowasmMessage({ runMinimap2: 'alignment', command: 'minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o sequence.fas.sam target.fas.mmi sequence.fas', inputSeq: message.inputSeq, refSeq: message.refSeq });
+				await this.postBiowasmMessage({ runMinimap2: 'buildIndex', command: 'minimap2 -t 1 -d ref.fas.mmi ref.fas', inputSeq: message.inputSeq, refSeq: message.refSeq });
+				await this.postBiowasmMessage({ runMinimap2: 'alignment', command: 'minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o sequence.fas.sam ref.fas.mmi sequence.fas' + (message.isGZIP ? ".gz" : ""), inputSeq: message.inputSeq, refSeq: message.refSeq, isGZIP: message.isGZIP });
 				await this.pyodideRunViralMSA(this.state.samFileData, message.refSeq, message.omitRef);
 			}
 		} else if (message.getResults) {
@@ -293,7 +293,7 @@ export class App extends Component {
 	postBiowasmMessage = async (message) => {
 		const CLI = this.state.CLI;
 		if (message.runMinimap2) {
-			await this.biowasmRunMinimap2(message.command, message.inputSeq, message.refSeq);
+			await this.biowasmRunMinimap2(message.command, message.inputSeq, message.refSeq, message.isGZIP);
 		} else if (message.runTN93) {
 			await this.biowasmRunTN93(message.alignmentFile, message.command);
 		} else if (message.getResults) {
@@ -312,14 +312,14 @@ export class App extends Component {
 	}
 
 	// run minimap2 with provided command, sequences
-	biowasmRunMinimap2 = async (command, inputSeq, refSeq) => {
+	biowasmRunMinimap2 = async (command, inputSeq, refSeq, isGZIP) => {
 		const CLI = this.state.CLI;
 		this.setState({ biowasmDownloadResults: false })
 
 		if (command.includes('-d')) {
 			// build minimap2 index
 			await CLI.mount([{
-				name: "target.fas",
+				name: "ref.fas",
 				data: refSeq,
 			}]);
 
@@ -328,10 +328,11 @@ export class App extends Component {
 			LOG((await CLI.exec(command)).stderr, false);
 		} else if (command.includes('-a')) {
 			// alignment
-			await CLI.mount([{
-				name: "sequence.fas",
-				data: inputSeq,
-			}]);
+			if (isGZIP) {
+				await CLI.fs.writeFile("sequence.fas.gz", new Uint8Array(inputSeq), { encoding: "binary" });
+			} else {
+				await CLI.fs.writeFile("sequence.fas", inputSeq, { encoding: "utf8" });
+			}
 
 			// run minimap2 in BioWASM
 			LOG('\nRunning command: ' + command + '\n\n', false)
@@ -428,7 +429,7 @@ export class App extends Component {
 	}
 
 	setOverlap = (event) => {
-		this.setState({ overlap: event.target.value, inputChanged: true, validOverlap: event.target.value >= 1 || event.target.value === ""})
+		this.setState({ overlap: event.target.value, inputChanged: true, validOverlap: event.target.value >= 1 || event.target.value === "" })
 	}
 
 	setCounts = (event) => {
@@ -490,7 +491,7 @@ export class App extends Component {
 	}
 
 	setLSD2DateFile = (event) => {
-		this.setState({ LSD2DateFile: event.target.files[0], inputChanged: true })
+		this.setState({ LSD2DateFile: event.target.files[0], validLSD2DateFile: true, inputChanged: true })
 	}
 
 	setLSD2OutgroupFile = (event) => {
@@ -584,6 +585,10 @@ export class App extends Component {
 			valid = false;
 		}
 
+		if (this.state.performLSD2 && !this.validLSD2()) {
+			valid = false;
+		}
+
 		if (!valid) {
 			alert("Invalid input. Please check your input and try again.")
 			LOG("Invalid input. Please check your input and try again.")
@@ -608,7 +613,7 @@ export class App extends Component {
 			await this.runFasttree(inputAln);
 		}
 		if (this.state.performLSD2) {
-			await this.runLSD2(await this.state.CLI.fs.readFile(FASTTREE_OUTPUT_FILE, { encoding: "utf8" }));
+			await this.runLSD2();
 		}
 		const timeElapsed = (new Date().getTime() - this.state.startTime) / 1000;
 		this.setState({ done: true, timeElapsed })
@@ -629,6 +634,7 @@ export class App extends Component {
 		let inputSeq;
 		let refSeq;
 		let isSAM;
+		let isGZIP;
 
 		LOG("Reading input sequence file...")
 		if (this.state.useExampleInput) {
@@ -636,7 +642,8 @@ export class App extends Component {
 			isSAM = false;
 		} else {
 			isSAM = this.state.inputFile.name.toLowerCase().endsWith('.sam');
-			inputSeq = await this.fileReaderReadFile(this.state.inputFile);
+			isGZIP = this.state.inputFile.name.toLowerCase().endsWith('.gz');
+			inputSeq = await this.fileReaderReadFile(this.state.inputFile, isGZIP);
 		}
 
 		if (this.state.refFile) {
@@ -647,11 +654,21 @@ export class App extends Component {
 		}
 
 		LOG("Running ViralMSA...")
-		await this.postViralMSAMessage({ run: 'viralmsa', inputSeq, isSAM, refSeq, 'omitRef': this.state.omitRef })
+		await this.postViralMSAMessage({ run: 'viralmsa', inputSeq, isSAM, isGZIP, refSeq, 'omitRef': this.state.omitRef })
 	}
 
 	validTN93 = () => {
 		return this.state.validThreshold && this.state.validFraction && this.state.validOverlap && this.state.validCounts && this.state.validProbability && this.state.validClusterThreshold;
+	}
+
+	validLSD2 = () => {
+		let validLSD2DateFile = true;
+		if (this.state.LSD2DateFile === undefined) {
+			validLSD2DateFile = false;
+		}
+
+		this.setState({ validLSD2DateFile })
+		return validLSD2DateFile && this.state.validMinBranchLength && this.state.validStdDevRelaxedClock && this.state.validRoundTime && this.state.validRateLowerBound;
 	}
 
 	runTN93 = async (alignmentFile) => {
@@ -819,7 +836,7 @@ export class App extends Component {
 	runFasttree = async (alignmentFileText) => {
 		const CLI = this.state.CLI;
 
-		LOG("Running FastTree... (This takes significantly longer than the other steps)")
+		LOG("Running FastTree for phylogenetic inference... (This takes significantly longer than the other steps)")
 
 		// mount alignment file
 		// TODO: need to delete previous file if it exists?
@@ -839,6 +856,76 @@ export class App extends Component {
 		}]);
 		LOG("FastTree finished!\n")
 		this.setState({ downloadTree: true })
+	}
+
+	runLSD2 = async () => {
+		const CLI = this.state.CLI;
+
+		LOG("Running LSD2 for tree rooting and dating...")
+
+		let command = "lsd2 -i " + FASTTREE_OUTPUT_FILE;
+
+		// mount date file
+		await CLI.mount([{
+			name: "date.date",
+			data: await this.fileReaderReadFile(this.state.LSD2DateFile),
+		}]);
+
+		command += " -d date.date";
+
+		// outgroup file
+		if (this.state.LSD2OutgroupFile) {
+			await CLI.mount([{
+				name: "outgroup.fas",
+				data: await this.fileReaderReadFile(this.state.LSD2OutgroupFile),
+			}]);
+
+			command += " -g outgroup.fas";
+
+			if (this.state.removeOutgroups) {
+				command += " -G";
+			}
+		} else {
+			// infer root
+			if (this.state.inferRoot) {
+				command += " -r a";
+			}
+		}
+
+		// root date
+		if (this.state.rootDate) {
+			if (parseInt(this.state.rootDate) == this.state.rootDate) {
+				command += " -a " + parseInt(this.state.rootDate);
+			} else {
+				command += ' -a "' + this.state.rootDate + '"';
+			}
+		}
+
+		// null branch length
+		command += " -l " + (this.state.nullBranchLength === "" ? DEFAULT_INPUT_STATE.nullBranchLength : this.state.nullBranchLength);
+
+		// min branch length
+		command += " -u " + (this.state.minBranchLength === "" ? DEFAULT_INPUT_STATE.minBranchLength : this.state.minBranchLength);
+		
+		// std dev relaxed clock
+		command += " -q " + (this.state.stdDevRelaxedClock === "" ? DEFAULT_INPUT_STATE.stdDevRelaxedClock : this.state.stdDevRelaxedClock);
+
+		// round time
+		command += " -R " + (this.state.roundTime === "" ? DEFAULT_INPUT_STATE.roundTime : this.state.roundTime);
+
+		// rate lower bound
+		command += " -t " + (this.state.rateLowerBound === "" ? DEFAULT_INPUT_STATE.rateLowerBound : this.state.rateLowerBound);
+
+		// variance
+		command += " -v " + this.state.LSD2Variance;
+
+		// sequence length
+		// command += " -s " + 
+
+		LOG('\nRunning command: ' + command + '\n\n', false)
+		const output = await CLI.exec(command)
+		LOG(output.stderr, false);
+		LOG('LSD2 Finished!');
 	}
 
 	downloadAlignment = () => {
