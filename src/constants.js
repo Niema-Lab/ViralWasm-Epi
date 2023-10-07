@@ -2,6 +2,8 @@ export const MINIMAP2_VERSION = "2.22";
 export const TN93_VERSION = "1.0.11";
 export const FASTTREE_VERSION = "2.1.11";
 export const LSD2_VERSION = "2.3";
+export const SED_VERSION = "4.8";
+export const SEQTK_VERSION = "1.4";
 
 export const OUTPUT_ID = "output-console";
 export const OFFLINE_INSTRUCTIONS = "/README.md";
@@ -13,6 +15,7 @@ export const VIRAL_MSA_REF_GENOMES_DIR = "data/ref_genomes/";
 export const EXAMPLE_INPUT_FILE = "data/example_hiv.fas";
 export const EXAMPLE_PRELOADED_REF = "NC_001802";
 export const PATH_TO_PYODIDE_ROOT = "/home/pyodide/";
+export const INPUT_ALN_FILE = "input.aln";
 export const FASTTREE_OUTPUT_FILE = "phylogenetic-tree.newick";
 export const DEFAULT_INPUT_STATE = {
 	useExampleInput: false,

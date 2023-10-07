@@ -27,7 +27,10 @@ import {
 	FASTTREE_VERSION,
 	LSD2_VERSION,
 	PATH_TO_PYODIDE_ROOT,
-	FASTTREE_OUTPUT_FILE
+	FASTTREE_OUTPUT_FILE,
+	SED_VERSION,
+	SEQTK_VERSION,
+	INPUT_ALN_FILE
 } from './constants.js';
 
 export class App extends Component {
@@ -52,6 +55,7 @@ export class App extends Component {
 
 			samFileData: undefined,
 			clusteringData: undefined,
+			tn93OutputFile: undefined,
 
 			startTime: new Date().getTime(),
 			timeElapsed: undefined,
@@ -91,23 +95,38 @@ export class App extends Component {
 
 	initBiowasm = async () => {
 		this.setState({
-			CLI: await new Aioli([{
-				tool: "minimap2",
-				version: MINIMAP2_VERSION,
-				urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/minimap2`,
-			}, {
-				tool: "tn93",
-				version: TN93_VERSION,
-				urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/tn93`,
-			}, {
-				tool: "fasttree",
-				version: FASTTREE_VERSION,
-				urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/fasttree`,
-			}, {
-				tool: "lsd2",
-				version: LSD2_VERSION,
-				urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/lsd2`,
-			}], {
+			CLI: await new Aioli([
+				{
+					tool: "base",
+					version: "1.0.0",
+					urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/base`,
+				},
+				{
+					tool: "minimap2",
+					version: MINIMAP2_VERSION,
+					urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/minimap2`,
+				}, {
+					tool: "tn93",
+					version: TN93_VERSION,
+					urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/tn93`,
+				}, {
+					tool: "fasttree",
+					version: FASTTREE_VERSION,
+					urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/fasttree`,
+				}, {
+					tool: "lsd2",
+					version: LSD2_VERSION,
+					urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/lsd2`,
+				}, {
+					tool: "sed",
+					version: SED_VERSION,
+					reinit: true,
+					urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/sed`,
+				}, {
+					tool: "seqtk",
+					version: SEQTK_VERSION,
+					urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/seqtk`,
+				}], {
 				printInterleaved: false,
 			})
 		}, async () => {
@@ -216,33 +235,6 @@ export class App extends Component {
 		})
 	}
 
-	postViralMSAMessage = async (message) => {
-		const pyodide = this.state.pyodide;
-
-		if (message.run) {
-			if (message.isSAM) {
-				await this.pyodideRunViralMSA(message.inputSeq, message.refSeq, message.omitRef);
-			} else {
-				// TODO: gzip before running
-				await this.postBiowasmMessage({ runMinimap2: 'buildIndex', command: 'minimap2 -t 1 -d ref.fas.mmi ref.fas', inputSeq: message.inputSeq, refSeq: message.refSeq });
-				await this.postBiowasmMessage({ runMinimap2: 'alignment', command: 'minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o sequence.fas.sam ref.fas.mmi sequence.fas' + (message.isGZIP ? ".gz" : ""), inputSeq: message.inputSeq, refSeq: message.refSeq, isGZIP: message.isGZIP });
-				await this.pyodideRunViralMSA(this.state.samFileData, message.refSeq, message.omitRef);
-			}
-		} else if (message.getResults) {
-			if (!this.state.viralMSADownloadResults) {
-				return;
-			}
-
-			const downloads = [['sequence.fas.sam.aln', pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" })]]
-
-			for (const download of downloads) {
-				// first element of array is filename, second element is content
-				LOG(`Downloading ${download[0]}`)
-				this.downloadFile(download[0], download[1])
-			}
-		}
-	}
-
 	pyodideRunViralMSA = async (inputSamData, refSeq, omitRef) => {
 		const pyodide = this.state.pyodide;
 
@@ -290,29 +282,8 @@ export class App extends Component {
 		this.setState({ viralMSADownloadResults: true, downloadAlignment: true })
 	}
 
-	postBiowasmMessage = async (message) => {
-		const CLI = this.state.CLI;
-		if (message.runMinimap2) {
-			await this.biowasmRunMinimap2(message.command, message.inputSeq, message.refSeq, message.isGZIP);
-		} else if (message.runTN93) {
-			await this.biowasmRunTN93(message.alignmentFile, message.command);
-		} else if (message.getResults) {
-			if (!this.state.biowasmDownloadResults) {
-				return;
-			}
-
-			const downloads = [[this.state.biowasmOutputFileName, await CLI.fs.readFile(this.state.biowasmOutputFileName, { encoding: "utf8" })]]
-
-			for (const download of downloads) {
-				// first element of array is filename, second element is content
-				LOG(`Downloading ${download[0]}`)
-				this.downloadFile(download[0], download[1])
-			}
-		}
-	}
-
 	// run minimap2 with provided command, sequences
-	biowasmRunMinimap2 = async (command, inputSeq, refSeq, isGZIP) => {
+	runMinimap2 = async (command, inputSeq, refSeq, isGZIP) => {
 		const CLI = this.state.CLI;
 		this.setState({ biowasmDownloadResults: false })
 
@@ -346,36 +317,12 @@ export class App extends Component {
 		}
 	}
 
-	biowasmRunTN93 = async (alignmentFile, command) => {
-		const CLI = this.state.CLI;
-
-		// mount alignment file
-		await CLI.mount([{
-			name: "input.fas",
-			data: alignmentFile,
-		}]);
-
-		const biowasmOutputFileName = 'pairwise-distances' + (command.includes('-D \t') ? '.tsv' : '.csv')
-		this.setState({ biowasmOutputFileName })
-
-		// create output file
-		await CLI.fs.writeFile(biowasmOutputFileName, "", { encoding: "utf8" });
-
-		// run tn93 in BioWASM
-		LOG('\nRunning command: ' + command + '\n\n', false)
-		await CLI.exec(command);
-
-		LOG("tn93 finished!\n")
-		this.setState({ biowasmDownloadResults: true, downloadPairwise: true })
-		this.runMolecularClustering(await CLI.fs.readFile(biowasmOutputFileName, { encoding: "utf8" }));
-	}
-
 	biowasmClearFiles = async () => {
 		const CLI = this.state.CLI;
 		const files = await CLI.fs.readdir("./");
 		for (const file of files) {
 			if (file !== "." && file !== "..") {
-				await CLI.fs.unlink(file);
+				await CLI.fs.truncate(file, 0);
 			}
 		}
 	}
@@ -595,8 +542,10 @@ export class App extends Component {
 			return;
 		}
 
-		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, downloadTree: false, clusteringData: undefined })
+		window.scrollTo(0, window.innerHeight / 5);
+		await this.biowasmClearFiles();
 		CLEAR_LOG();
+		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, downloadTree: false, clusteringData: undefined })
 
 		let inputAln = undefined;
 		if (this.state.skipAlignment) {
@@ -606,11 +555,19 @@ export class App extends Component {
 			inputAln = pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" });
 		}
 
+		if (this.state.performMolecularClustering || this.state.performPhyloInference || this.state.performLSD2) {
+			// mount alignment file
+			await this.state.CLI.mount([{
+				name: INPUT_ALN_FILE,
+				data: inputAln,
+			}]);
+		}
+
 		if (this.state.performMolecularClustering) {
-			await this.runTN93(inputAln);
+			await this.runTN93();
 		}
 		if (this.state.performPhyloInference) {
-			await this.runFasttree(inputAln);
+			await this.runFasttree();
 		}
 		if (this.state.performLSD2) {
 			await this.runLSD2();
@@ -654,7 +611,14 @@ export class App extends Component {
 		}
 
 		LOG("Running ViralMSA...")
-		await this.postViralMSAMessage({ run: 'viralmsa', inputSeq, isSAM, isGZIP, refSeq, 'omitRef': this.state.omitRef })
+		if (isSAM) {
+			await this.pyodideRunViralMSA(inputSeq, refSeq, this.state.omitRef);
+		} else {
+			// TODO: gzip before running
+			await this.runMinimap2('minimap2 -t 1 -d ref.fas.mmi ref.fas', inputSeq, refSeq, isGZIP);
+			await this.runMinimap2('minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o sequence.fas.sam ref.fas.mmi sequence.fas' + (isGZIP ? ".gz" : ""), inputSeq, refSeq, isGZIP);
+			await this.pyodideRunViralMSA(this.state.samFileData, refSeq, this.state.omitRef);
+		}
 	}
 
 	validTN93 = () => {
@@ -671,16 +635,21 @@ export class App extends Component {
 		return validLSD2DateFile && this.state.validMinBranchLength && this.state.validStdDevRelaxedClock && this.state.validRoundTime && this.state.validRateLowerBound;
 	}
 
-	runTN93 = async (alignmentFile) => {
+	runTN93 = async () => {
 		let command = 'tn93 -o';
 
+		let tn93OutputFile;
 		if (this.state.format.includes('tsv')) {
-			command += ' pairwise-distances.tsv -D \t';
+			tn93OutputFile = 'pairwise-distances.tsv';
+			command += ' ' + tn93OutputFile + ' -D \t';
 		} else if (this.state.format.includes('csv')) {
-			command += ' pairwise-distances.csv';
+			tn93OutputFile = 'pairwise-distances.csv';
+			command += ' ' + tn93OutputFile;
 		} else {
-			command += ' pairwise-distances.txt';
+			tn93OutputFile = 'pairwise-distances.txt';
+			command += ' ' + tn93OutputFile;
 		}
+		this.setState({ tn93OutputFile })
 
 		// add threshold
 		command += " -t " + (this.state.threshold === "" ? DEFAULT_INPUT_STATE.threshold : this.state.threshold);
@@ -731,17 +700,21 @@ export class App extends Component {
 		}
 
 		// add input file
-		command += " input.fas";
-
-		LOG("Reading input sequence file...")
-		const alignmentFileText = typeof alignmentFile === 'string' ? alignmentFile : await this.fileReaderReadFile(alignmentFile);
+		command += " " + INPUT_ALN_FILE;
 
 		LOG("Running tn93...")
-		await this.postBiowasmMessage({
-			runTN93: true,
-			alignmentFile: alignmentFileText,
-			command
-		});
+		const CLI = this.state.CLI;
+
+		// create output file
+		await CLI.fs.writeFile(tn93OutputFile, "", { encoding: "utf8" });
+
+		// run tn93 in BioWASM
+		LOG('\nRunning command: ' + command + '\n\n', false)
+		await CLI.exec(command);
+
+		LOG("tn93 finished!\n")
+		this.setState({ biowasmDownloadResults: true, downloadPairwise: true })
+		this.runMolecularClustering(await CLI.fs.readFile(tn93OutputFile, { encoding: "utf8" }));
 	}
 
 	runMolecularClustering = (pairwiseFile) => {
@@ -833,19 +806,12 @@ export class App extends Component {
 		this.setState({ clusteringData })
 	}
 
-	runFasttree = async (alignmentFileText) => {
+	runFasttree = async () => {
 		const CLI = this.state.CLI;
 
 		LOG("Running FastTree for phylogenetic inference... (This takes significantly longer than the other steps)")
 
-		// mount alignment file
-		// TODO: need to delete previous file if it exists?
-		await CLI.mount([{
-			name: "fasttree-input.fas",
-			data: alignmentFileText,
-		}]);
-
-		const command = `fasttree${this.state.gtrModel ? " -gtr" : ""}${this.state.gammaLikelihoods ? " -gamma" : ""} -nt fasttree-input.fas`;
+		const command = `fasttree${this.state.gtrModel ? " -gtr" : ""}${this.state.gammaLikelihoods ? " -gamma" : ""} -nt ${INPUT_ALN_FILE}`;
 
 		LOG('\nRunning command: ' + command + '\n\n', false)
 		const output = await CLI.exec(command)
@@ -906,7 +872,7 @@ export class App extends Component {
 
 		// min branch length
 		command += " -u " + (this.state.minBranchLength === "" ? DEFAULT_INPUT_STATE.minBranchLength : this.state.minBranchLength);
-		
+
 		// std dev relaxed clock
 		command += " -q " + (this.state.stdDevRelaxedClock === "" ? DEFAULT_INPUT_STATE.stdDevRelaxedClock : this.state.stdDevRelaxedClock);
 
@@ -914,26 +880,56 @@ export class App extends Component {
 		command += " -R " + (this.state.roundTime === "" ? DEFAULT_INPUT_STATE.roundTime : this.state.roundTime);
 
 		// rate lower bound
-		command += " -t " + (this.state.rateLowerBound === "" ? DEFAULT_INPUT_STATE.rateLowerBound : this.state.rateLowerBound);
+		command += " -t " + new Number(this.state.rateLowerBound === "" ? DEFAULT_INPUT_STATE.rateLowerBound : this.state.rateLowerBound).toFixed(20);
 
 		// variance
 		command += " -v " + this.state.LSD2Variance;
 
-		// sequence length
-		// command += " -s " + 
+		// sequence length, get with sed
+		// read first 40MB
+		await CLI.fs.writeFile("input-trim.aln", await CLI.read({
+			path: INPUT_ALN_FILE,
+			length: 40000000,
+		}), { encoding: "binary" });
+
+		const formatted = await CLI.exec("seqtk seq -l 0 input-trim.aln");
+		await CLI.fs.writeFile("input-trim-formatted.aln", formatted.stdout, { encoding: "utf8" });
+
+		const seqLength = (await CLI.exec("sed -n 2p input-trim-formatted.aln")).stdout.length;
+		command += " -s " + seqLength;
 
 		LOG('\nRunning command: ' + command + '\n\n', false)
 		const output = await CLI.exec(command)
-		LOG(output.stderr, false);
+		LOG(output.stdout, false);
 		LOG('LSD2 Finished!');
 	}
 
 	downloadAlignment = () => {
-		this.postViralMSAMessage({ getResults: 'all' });
+		if (!this.state.viralMSADownloadResults) {
+			return;
+		}
+
+		const downloads = [['sequence.fas.sam.aln', this.state.pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" })]]
+
+		for (const download of downloads) {
+			// first element of array is filename, second element is content
+			LOG(`Downloading ${download[0]}`)
+			this.downloadFile(download[0], download[1])
+		}
 	}
 
-	downloadPairwise = () => {
-		this.postBiowasmMessage({ getResults: 'all' });
+	downloadPairwise = async () => {
+		if (!this.state.biowasmDownloadResults) {
+			return;
+		}
+
+		const downloads = [[this.state.tn93OutputFile, await this.state.CLI.fs.readFile(this.state.tn93OutputFile, { encoding: "utf8" })]]
+
+		for (const download of downloads) {
+			// first element of array is filename, second element is content
+			LOG(`Downloading ${download[0]}`)
+			this.downloadFile(download[0], download[1])
+		}
 	}
 
 	downloadClusters = () => {
@@ -990,7 +986,7 @@ export class App extends Component {
 				<h2 className="mt-5 mb-2 text-center" >ViralWasm-Epi</h2>
 				<p className="text-center my-3">
 					A serverless WebAssembly-based pipeline for multi-sequence alignment and molecular clustering. <br />
-					Uses ViralMSA{this.state.viralMSAVersion}, minimap2 v{MINIMAP2_VERSION}, tn93 v{TN93_VERSION}, and FastTree v{FASTTREE_VERSION} via <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.<br />
+					Uses ViralMSA{this.state.viralMSAVersion}, minimap2 v{MINIMAP2_VERSION}, tn93 v{TN93_VERSION}, FastTree v{FASTTREE_VERSION}, Seqtk v{SEQTK_VERSION}, and LSD2 v{LSD2_VERSION} via <a href="https://biowasm.com/" target="_blank" rel="noreferrer">Biowasm</a>.<br />
 					<a href="" onClick={this.showOfflineInstructions}>Want to run offline? Click here!</a><br />
 				</p>
 				<div id="loading" className={this.state.siteReady ? 'd-none' : 'mt-5'}>
@@ -1208,7 +1204,7 @@ export class App extends Component {
 								<input type="number" className={`form-control ${!this.state.validMinBranchLength && 'is-invalid'}`} id="min-branch-length" placeholder="Default: 0" min="0" value={this.state.minBranchLength} onInput={this.setMinBranchLength} />
 
 								<p className="mt-3 mb-2">Standard Deviation of Relaxed Clock:</p>
-								<input type="number" className={`form-control ${!this.state.validStdDevRelaxedClock && 'is-invalid'}`} id="min-branch-length" placeholder="Default: 0.2" min="0" value={this.state.stdDevRelaxedClock} onInput={this.setStdDevRelaxedClock} />
+								<input type="number" className={`form-control ${!this.state.validStdDevRelaxedClock && 'is-invalid'}`} id="std-dev-relaxed" placeholder="Default: 0.2" min="0" value={this.state.stdDevRelaxedClock} onInput={this.setStdDevRelaxedClock} />
 
 								<p className="mt-3 mb-2">Round Time:</p>
 								<input type="number" className={`form-control ${!this.state.validRoundTime && 'is-invalid'}`} id="round-time" placeholder="Default: 365" min="0" value={this.state.roundTime} onInput={this.setRoundTime} />
