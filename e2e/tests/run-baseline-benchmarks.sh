@@ -39,7 +39,7 @@ run_benchmark() {
 	rm -rf "$1.fas.sam"
 }
 
-for r in {1..1}; do
+for r in {1..10}; do
 	for n in 100 200 400 1000 2000 4000; do
 		run_benchmark "$n" "$n.$r"
 	done
