@@ -1010,10 +1010,6 @@ export class App extends Component {
 
 	getMemory = async () => {
 		try {
-			console.log(performance.measureUserAgentSpecificMemory)
-			console.log('measureUserAgentSpecificMemory' in performance);
-			console.log(performance)
-			console.log(performance.measureUserAgentSpecificMemory())
 			const result = await performance.measureUserAgentSpecificMemory();
 			if (result.bytes > this.state.peakMemory) {
 				this.setState({ peakMemory: result.bytes })

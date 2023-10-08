@@ -15,15 +15,7 @@ for (let i = 1; i <= RUN_COUNT; i++) {
 }
 
 const runBenchmark = async (page, browserName: string, alignmentFiles: string[], referenceFile: string, downloadedLocation: string, runTimeout: number) => {
-	// const client = await page.context().newCDPSession(page);
-	// client.addListener('HeapProfiler.addHeapSnapshotChunk', payload => {
-	// 	console.log('chunk');
-	// 	console.log(payload.chunk);
-	// })
-	// await client.send("HeapProfiler.enable");
-	// const profile = await client.send("HeapProfiler.takeHeapSnapshot");
-
-	test.setTimeout(runTimeout + 45000);
+	test.setTimeout(runTimeout + 75000);
 	await page.goto('/');
 	await expect(page.getByTestId('output-text')).toHaveValue(/ViralMSA loaded./, { timeout: 30000 });
 	await page.getByTestId('input-sequences').setInputFiles(alignmentFiles);
@@ -35,19 +27,17 @@ const runBenchmark = async (page, browserName: string, alignmentFiles: string[],
 	// const timeElapsed = timeOutputLine?.split(' ')?.slice(2)?.join('')?.replace(/[^0-9\.]/g, '') ?? '-1';
 	const timeElapsed = (await page.getByTestId('duration-text').textContent()).replace(/[^0-9\.]/g, '');
 	await expect(parseFloat(timeElapsed)).toBeGreaterThan(0);
-	// const memoryLine = (await page.getByTestId('output-text').inputValue()).split('\n').filter(line => line.includes('Estimated Peak Memory'))[0];
-	// let peakMemory = memoryLine?.split(' ')?.slice(2)?.join('')?.replace(/[^0-9\.]/g, '') ?? '-1';
-	// console.log('Peak memory: ' + peakMemory);
-	// if (peakMemory === '-1') {
-	// 	// TODO
-	// }
+	await expect(page.getByTestId('output-text')).toHaveValue(/Estimated Peak Memory/, { timeout: 30000 });
+	const memoryLine = (await page.getByTestId('output-text').inputValue()).split('\n').filter(line => line.includes('Estimated Peak Memory'))[0];
+	let peakMemory = parseFloat(memoryLine?.split(' ')?.slice(2)?.join('')?.replace(/[^0-9\.]/g, '') ?? '-1') * 1000;
 	await downloadFile(page, 'Download Alignment', BENCHMARK_OUTPUT_DIR + downloadedLocation + browserName + '/');
-
+	
 	if (!fs.existsSync(BENCHMARK_DIR + downloadedLocation + browserName)) {
 		fs.mkdirSync(BENCHMARK_DIR + downloadedLocation + browserName, { recursive: true });
 	}
 	fs.writeFileSync(BENCHMARK_DIR + downloadedLocation + browserName + '/time.log', timeElapsed);
-	// fs.writeFileSync(BENCHMARK_DIR + downloadedLocation + browserName + '/memory.log', peakMemory);
+	fs.writeFileSync(BENCHMARK_DIR + downloadedLocation + browserName + '/memory.log', '' + peakMemory);
 	console.log(downloadedLocation);
-	console.log(timeElapsed);
+	console.log('Time elapsed: ' + timeElapsed);
+	console.log('Peak memory: ' + peakMemory);
 }
