@@ -30,7 +30,7 @@ const runBenchmark = async (page, browserName: string, alignmentFiles: string[],
 	await page.getByTestId('ref-sequence').setInputFiles(referenceFile);
 	await page.getByTestId('run').click();
 
-	await expect(page.getByTestId('output-text')).toHaveValue(/Done! Time Elapsed:/, { timeout: runTimeout });
+	await expect(page.getByTestId('output-text')).toHaveValue(/Time Elapsed:/, { timeout: runTimeout });
 	// const timeOutputLine = (await page.getByTestId('output-text').inputValue()).split('\n').filter(line => line.includes('ViralMSA finished'))[0];
 	// const timeElapsed = timeOutputLine?.split(' ')?.slice(2)?.join('')?.replace(/[^0-9\.]/g, '') ?? '-1';
 	const timeElapsed = (await page.getByTestId('duration-text').textContent()).replace(/[^0-9\.]/g, '');
