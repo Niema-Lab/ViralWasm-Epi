@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   benchmark:
-    timeout-minutes: 60
+    timeout-minutes: 240
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

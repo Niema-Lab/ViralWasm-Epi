@@ -10,17 +10,36 @@ run_benchmark() {
 	rm -rf $LOG_DIR
 	rm -rf $OUT_DIR
 
-	/usr/bin/time -v ViralMSA.py -e email@address.com -s "$1.fas.sam" -o $OUT_DIR -r MT072688.fasta --viralmsa_dir cache 2>time_output.log
+	total_time_taken=0
+	peak_memory=0
+
+	/usr/bin/time -v minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o "$1.fas.sam" MT072688.fasta.mmi "$1.01.true.fas.gz" 2>minimap_output.log
+	time_taken=$(grep "User time (seconds): " minimap_output.log | awk '{print $4}')
+	total_time_taken=$(echo "$time_taken + $total_time_taken" | bc)
+	memory=$(grep "Maximum resident set size (kbytes): " minimap_output.log | awk '{print $6}')
+	if [ "$memory" -gt "$peak_memory" ]; then
+		peak_memory=$memory
+	fi
+
+	/usr/bin/time -v ViralMSA.py -e email@address.com -s "$1.fas.sam" -o $OUT_DIR -r MT072688.fasta --viralmsa_dir cache 2>viralmsa_output.log
+	time_taken=$(grep "User time (seconds): " viralmsa_output.log | awk '{print $4}')
+	total_time_taken=$(echo "$time_taken + $total_time_taken" | bc)
+	memory=$(grep "Maximum resident set size (kbytes): " viralmsa_output.log | awk '{print $6}')
+	if [ "$memory" -gt "$peak_memory" ]; then
+		peak_memory=$memory
+	fi
 
 	mkdir -p $LOG_DIR
-	grep "User time (seconds): " time_output.log | awk '{print $4}' >"$LOG_DIR/time.log"
-	grep "Maximum resident set size (kbytes): " time_output.log | awk '{print $6}' >"$LOG_DIR/memory.log"
+	echo $total_time_taken >"$LOG_DIR/time.log"
+	echo $peak_memory >"$LOG_DIR/memory.log"
 
 	rm -rf cache
-	rm -rf time_output.log
+	rm -rf minimap_output.log
+	rm -rf viralmsa_output.log
+	rm -rf "$1.fas.sam"
 }
 
-for r in {1..10}; do
+for r in {1..1}; do
 	for n in 100 200 400 1000 2000 4000; do
 		run_benchmark "$n" "$n.$r"
 	done

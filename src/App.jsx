@@ -53,10 +53,11 @@ export class App extends Component {
 			CLI: undefined,
 			pyodide: undefined,
 
-			samFileData: undefined,
 			clusteringData: undefined,
 			tn93OutputFile: undefined,
 
+			memoryInterval: undefined,
+			peakMemory: 0,
 			startTime: new Date().getTime(),
 			timeElapsed: undefined,
 			running: false,
@@ -105,6 +106,7 @@ export class App extends Component {
 					tool: "minimap2",
 					version: MINIMAP2_VERSION,
 					urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/minimap2`,
+					reinit: true,
 				}, {
 					tool: "tn93",
 					version: TN93_VERSION,
@@ -261,8 +263,12 @@ export class App extends Component {
 		}
 
 		// write provided files to Pyodide
+		const transferTime = performance.now();
+		LOG('\n', false)
+		LOG('Transferring files to Pyodide for ViralMSA...')
 		pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + 'reference.fas', refSeq, { encoding: "utf8" });
 		pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + 'sequence.fas.sam', inputSamData, { encoding: "utf8" });
+		LOG(`Transferred files in ${((performance.now() - transferTime) / 1000).toFixed(3)} seconds`)
 
 		let args = "./ViralMSA.py -e email@address.com -s sequence.fas.sam -o output -r reference.fas --viralmsa_dir cache";
 
@@ -278,6 +284,7 @@ export class App extends Component {
 		pyodide.runPython(this.state.ViralMSAWeb);
 
 		// after finished
+		LOG('\n', false)
 		LOG(`ViralMSA finished in ${((performance.now() - viralMSAStartTime) / 1000).toFixed(3)} seconds`)
 		this.setState({ viralMSADownloadResults: true, downloadAlignment: true })
 	}
@@ -295,8 +302,14 @@ export class App extends Component {
 			}]);
 
 			// run minimap2 in BioWASM
-			LOG('\nRunning command: ' + command + '\n\n', false)
+			LOG('\n', false);
+			LOG('Building index for reference sequence...')
+			LOG('Running command: ' + command + '\n')
+
+			const minimap2StartTime = performance.now();
 			LOG((await CLI.exec(command)).stderr, false);
+			LOG('\n', false)
+			LOG(`Minimap2 indexing finished in ${((performance.now() - minimap2StartTime) / 1000).toFixed(3)} seconds`)
 		} else if (command.includes('-a')) {
 			// alignment
 			if (isGZIP) {
@@ -306,14 +319,20 @@ export class App extends Component {
 			}
 
 			// run minimap2 in BioWASM
-			LOG('\nRunning command: ' + command + '\n\n', false)
-			LOG((await CLI.exec(command)).stderr, false);
+			LOG('\n', false);
+			LOG('Aligning sequences...')
+			LOG('Running command: ' + command + '\n')
 
-			// set file data (sequence alignment / map file)
-			await this.setStatePromise({ samFileData: await CLI.fs.readFile("sequence.fas.sam", { encoding: "utf8" }) })
+			const minimap2StartTime = performance.now();
+			LOG((await CLI.exec(command)).stderr, false);
+			LOG('\n', false);
+			LOG(`Minimap2 alignment finished in ${((performance.now() - minimap2StartTime) / 1000).toFixed(3)} seconds`)
 
 			// cleanup
 			await this.biowasmClearFiles();
+
+			// set file data (sequence alignment / map file)
+			return await CLI.fs.readFile("sequence.fas.sam", { encoding: "utf8" });
 		}
 	}
 
@@ -542,10 +561,12 @@ export class App extends Component {
 			return;
 		}
 
-		window.scrollTo(0, window.innerHeight / 5);
+		window.scrollTo(0, window.innerHeight / 4);
 		await this.biowasmClearFiles();
 		CLEAR_LOG();
-		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, downloadTree: false, clusteringData: undefined })
+
+		this.state.memoryInterval && clearInterval(this.state.memoryInterval);
+		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, downloadTree: false, clusteringData: undefined, memoryInterval: setInterval(this.getMemory, 1000) })
 
 		let inputAln = undefined;
 		if (this.state.skipAlignment) {
@@ -573,8 +594,15 @@ export class App extends Component {
 			await this.runLSD2();
 		}
 		const timeElapsed = (new Date().getTime() - this.state.startTime) / 1000;
-		this.setState({ done: true, timeElapsed })
-		LOG(`Done! Time Elapsed: ${timeElapsed.toFixed(3)} seconds`);
+		this.state.memoryInterval && clearInterval(this.state.memoryInterval);
+		this.setState({ done: true, timeElapsed, memoryInterval: undefined })
+		LOG(`Done!`);
+		LOG(`Time Elapsed: ${timeElapsed.toFixed(3)} seconds`);
+		if (this.state.peakMemory > 0) {
+			LOG(`Estimated Peak Memory: ${(this.state.peakMemory / 1000000).toFixed(3)} MB`);
+		} else {
+			LOG(`Estimated Peak Memory: ${(await this.getMemory() / 1000000).toFixed(3)} MB`);
+		}
 	}
 
 	runViralMSA = async () => {
@@ -593,6 +621,7 @@ export class App extends Component {
 		let isSAM;
 		let isGZIP;
 
+		const readStartTime = performance.now();
 		LOG("Reading input sequence file...")
 		if (this.state.useExampleInput) {
 			inputSeq = this.state.exampleInput;
@@ -609,15 +638,14 @@ export class App extends Component {
 			// only need to provide refID when using a preloaded reference sequence and index
 			refSeq = await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_REF_GENOMES_DIR}` + this.state.preloadedRef + "/" + this.state.preloadedRef + ".fas")).text();
 		}
+		LOG(`Read input sequence file in ${((performance.now() - readStartTime) / 1000).toFixed(3)} seconds`)
 
-		LOG("Running ViralMSA...")
 		if (isSAM) {
 			await this.pyodideRunViralMSA(inputSeq, refSeq, this.state.omitRef);
 		} else {
-			// TODO: gzip before running
 			await this.runMinimap2('minimap2 -t 1 -d ref.fas.mmi ref.fas', inputSeq, refSeq, isGZIP);
-			await this.runMinimap2('minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o sequence.fas.sam ref.fas.mmi sequence.fas' + (isGZIP ? ".gz" : ""), inputSeq, refSeq, isGZIP);
-			await this.pyodideRunViralMSA(this.state.samFileData, refSeq, this.state.omitRef);
+			const samFileData = await this.runMinimap2('minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o sequence.fas.sam ref.fas.mmi sequence.fas' + (isGZIP ? ".gz" : ""), inputSeq, refSeq, isGZIP);
+			await this.pyodideRunViralMSA(samFileData, refSeq, this.state.omitRef);
 		}
 	}
 
@@ -978,6 +1006,22 @@ export class App extends Component {
 
 	hideOfflineInstructions = () => {
 		this.setState({ showOfflineInstructions: false })
+	}
+
+	getMemory = async () => {
+		try {
+			console.log(performance.measureUserAgentSpecificMemory)
+			console.log('measureUserAgentSpecificMemory' in performance);
+			console.log(performance)
+			console.log(performance.measureUserAgentSpecificMemory())
+			const result = await performance.measureUserAgentSpecificMemory();
+			if (result.bytes > this.state.peakMemory) {
+				this.setState({ peakMemory: result.bytes })
+			}
+			return result.bytes;
+		} catch (error) {
+			console.log(error);
+		}
 	}
 
 	render() {

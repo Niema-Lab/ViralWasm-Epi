@@ -15,6 +15,4 @@ minimap2 -t 1 -d MT072688.fasta.mmi MT072688.fasta
 
 for n in 100 200 400 1000 2000 4000; do
 	curl -LO https://github.com/niemasd/ViralMSA-Paper/raw/master/data/SARSCOV2/$n/$n.01.true.fas.gz
-	gzip -d -f $n.01.true.fas.gz
-	minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o "$n.fas.sam" MT072688.fasta.mmi "$n.01.true.fas"
 done
