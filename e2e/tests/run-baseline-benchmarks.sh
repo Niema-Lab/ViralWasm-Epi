@@ -22,8 +22,8 @@ run_benchmark() {
 	fi
 
 	/usr/bin/time -v ViralMSA.py -e email@address.com -s "$1.fas.sam" -o $OUT_DIR -r MT072688.fasta --viralmsa_dir cache 2>viralmsa_output.log
-	viral_msa_time_taken=$(grep "User time (seconds): " viralmsa_output.log | awk '{print $4}')
-	total_time_taken=$(echo "$viral_msa_time_taken + $total_time_taken" | bc)
+	viralmsa_time_taken=$(grep "User time (seconds): " viralmsa_output.log | awk '{print $4}')
+	total_time_taken=$(echo "$viralmsa_time_taken + $total_time_taken" | bc)
 	memory=$(grep "Maximum resident set size (kbytes): " viralmsa_output.log | awk '{print $6}')
 	if [ "$memory" -gt "$peak_memory" ]; then
 		peak_memory=$memory
@@ -31,7 +31,7 @@ run_benchmark() {
 
 	mkdir -p $LOG_DIR
 	echo $minimap2_time_taken >"$LOG_DIR/minimap2_time.log"
-	echo $viral_msa_time_taken >"$LOG_DIR/viral_msa_time.log"
+	echo $viral_msa_time_taken >"$LOG_DIR/viralmsa_time.log"
 	echo $total_time_taken >"$LOG_DIR/time.log"
 	echo $peak_memory >"$LOG_DIR/memory.log"
 
