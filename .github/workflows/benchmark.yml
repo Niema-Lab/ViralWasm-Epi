@@ -59,6 +59,10 @@ jobs:
         run: |
           cd e2e/tests/
           bash run-baseline-benchmarks.sh
+      - name: Run benchmark summary script
+        run: |
+          cd e2e/tests/
+          bash benchmark-summary.sh
       - uses: actions/upload-artifact@v3
         with:
           name: benchmarks
