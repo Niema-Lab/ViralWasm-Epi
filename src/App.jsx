@@ -1,5 +1,7 @@
 // TODO: speed up load time / run time
 // TODO: incorporate gzip wherever and optimize memory usage
+// TODO: implement manual reinit
+// TODO: no need for minimap2 ref file indexing? 
 import React, { Component, Fragment } from 'react'
 import { marked } from 'marked'
 import Aioli from "@biowasm/aioli/dist/aioli";
@@ -637,7 +639,7 @@ export class App extends Component {
 		if (isSAM) {
 			await this.pyodideRunViralMSA(inputSeq, refSeq, this.state.omitRef);
 		} else {
-			await this.runMinimap2('minimap2 -t 1 -d ref.fas.mmi ref.fas', inputSeq, refSeq, isGZIP);
+			// await this.runMinimap2('minimap2 -t 1 -d ref.fas.mmi ref.fas', inputSeq, refSeq, isGZIP);
 			const samFileData = await this.runMinimap2('minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o sequence.fas.sam ref.fas.mmi sequence.fas' + (isGZIP ? ".gz" : ""), inputSeq, refSeq, isGZIP);
 			await this.biowasmClearFiles();
 			await this.pyodideRunViralMSA(samFileData, refSeq, this.state.omitRef);

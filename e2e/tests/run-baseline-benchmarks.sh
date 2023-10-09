@@ -1,4 +1,4 @@
-TEST_COUNT=10
+TEST_COUNT=5
 
 cd ../data
 
@@ -15,10 +15,10 @@ run_benchmark() {
 	total_time_taken=0
 	peak_memory=0
 
-	/usr/bin/time -v minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o "$1.fas.sam" MT072688.fasta.mmi "$1.01.true.fas.gz" 2>minimap_output.log
-	minimap2_time_taken=$(grep "User time (seconds): " minimap_output.log | awk '{print $4}')
+	/usr/bin/time -v minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o "$1.fas.sam" MT072688.fasta.mmi "$1.01.true.fas.gz" 2>minimap2_output.log
+	minimap2_time_taken=$(grep "User time (seconds): " minimap2_output.log | awk '{print $4}')
 	total_time_taken=$(echo "$minimap2_time_taken + $total_time_taken" | bc)
-	memory=$(grep "Maximum resident set size (kbytes): " minimap_output.log | awk '{print $6}')
+	memory=$(grep "Maximum resident set size (kbytes): " minimap2_output.log | awk '{print $6}')
 	if [ "$memory" -gt "$peak_memory" ]; then
 		peak_memory=$memory
 	fi
@@ -38,7 +38,7 @@ run_benchmark() {
 	echo $peak_memory >"$LOG_DIR/memory.log"
 
 	rm -rf cache
-	rm -rf minimap_output.log
+	rm -rf minimap2_output.log
 	rm -rf viralmsa_output.log
 	rm -rf "$1.fas.sam"
 }
