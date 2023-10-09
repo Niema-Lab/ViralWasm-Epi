@@ -1,4 +1,4 @@
-TEST_COUNT=20
+TEST_COUNT=10
 
 cd ../data
 
@@ -33,7 +33,7 @@ run_benchmark() {
 
 	mkdir -p $LOG_DIR
 	echo $minimap2_time_taken >"$LOG_DIR/minimap2_time.log"
-	echo $viral_msa_time_taken >"$LOG_DIR/viralmsa_time.log"
+	echo $viralmsa_time_taken >"$LOG_DIR/viralmsa_time.log"
 	echo $total_time_taken >"$LOG_DIR/time.log"
 	echo $peak_memory >"$LOG_DIR/memory.log"
 

@@ -4,7 +4,7 @@ import fs from 'fs';
 import { downloadFile, BENCHMARK_DIR, BENCHMARK_OUTPUT_DIR } from './constants';
 
 const BENCHMARK_TESTS = ['100', '200', '400', '1000', '2000', '4000'];
-const TEST_COUNT = 20;
+const TEST_COUNT = 10;
 
 for (let i = 1; i <= TEST_COUNT; i++) {
 	for (const sequenceSize of BENCHMARK_TESTS) {

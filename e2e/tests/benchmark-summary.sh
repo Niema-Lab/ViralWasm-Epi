@@ -1,4 +1,4 @@
-TEST_COUNT=20
+TEST_COUNT=10
 
 cd ../../benchmarks
 
