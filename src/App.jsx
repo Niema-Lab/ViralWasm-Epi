@@ -56,7 +56,6 @@ export class App extends Component {
 			clusteringData: undefined,
 			tn93OutputFile: undefined,
 
-			memoryInterval: undefined,
 			peakMemory: 0,
 			startTime: new Date().getTime(),
 			timeElapsed: undefined,
@@ -98,15 +97,9 @@ export class App extends Component {
 		this.setState({
 			CLI: await new Aioli([
 				{
-					tool: "base",
-					version: "1.0.0",
-					urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/base`,
-				},
-				{
 					tool: "minimap2",
 					version: MINIMAP2_VERSION,
 					urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/minimap2`,
-					reinit: true,
 				}, {
 					tool: "tn93",
 					version: TN93_VERSION,
@@ -243,24 +236,7 @@ export class App extends Component {
 		// reset global variable
 		this.setState({ viralMSADownloadResults: false })
 
-		// remove sequence.fas.sam
-		if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT).includes('sequence.fas.sam')) {
-			pyodide.FS.unlink(PATH_TO_PYODIDE_ROOT + 'sequence.fas.sam');
-		}
-
-		// remove reference.fas
-		if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT).includes('reference.fas')) {
-			pyodide.FS.unlink(PATH_TO_PYODIDE_ROOT + 'reference.fas');
-		}
-
-		// remove output folder
-		if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT).includes('output')) {
-			for (const file of pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + 'output')) {
-				if (file === '.' || file === '..') continue;
-				pyodide.FS.unlink(PATH_TO_PYODIDE_ROOT + 'output/' + file)
-			}
-			pyodide.FS.rmdir(PATH_TO_PYODIDE_ROOT + 'output', true);
-		}
+		await this.pyodideClearFiles();
 
 		// write provided files to Pyodide
 		const transferTime = performance.now();
@@ -287,6 +263,33 @@ export class App extends Component {
 		LOG('\n', false)
 		LOG(`ViralMSA finished in ${((performance.now() - viralMSAStartTime) / 1000).toFixed(3)} seconds`)
 		this.setState({ viralMSADownloadResults: true, downloadAlignment: true })
+
+		await this.pyodideClearFiles(false);
+	}
+
+	pyodideClearFiles = async (removeAln = true) => {
+		const pyodide = this.state.pyodide;
+
+		// remove sequence.fas.sam
+		if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT).includes('sequence.fas.sam')) {
+			pyodide.FS.unlink(PATH_TO_PYODIDE_ROOT + 'sequence.fas.sam');
+		}
+
+		// remove reference.fas
+		if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT).includes('reference.fas')) {
+			pyodide.FS.unlink(PATH_TO_PYODIDE_ROOT + 'reference.fas');
+		}
+
+		// remove output folder
+		if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT).includes('output')) {
+			for (const file of pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + 'output')) {
+				if (file === '.' || file === '..' || (file === 'sequence.fas.sam.aln' && !removeAln)) continue;
+				pyodide.FS.unlink(PATH_TO_PYODIDE_ROOT + 'output/' + file)
+			}
+			if (removeAln) {
+				pyodide.FS.rmdir(PATH_TO_PYODIDE_ROOT + 'output', true);
+			}
+		}
 	}
 
 	// run minimap2 with provided command, sequences
@@ -327,9 +330,6 @@ export class App extends Component {
 			LOG((await CLI.exec(command)).stderr, false);
 			LOG('\n', false);
 			LOG(`Minimap2 alignment finished in ${((performance.now() - minimap2StartTime) / 1000).toFixed(3)} seconds`)
-
-			// cleanup
-			await this.biowasmClearFiles();
 
 			// set file data (sequence alignment / map file)
 			return await CLI.fs.readFile("sequence.fas.sam", { encoding: "utf8" });
@@ -565,8 +565,7 @@ export class App extends Component {
 		await this.biowasmClearFiles();
 		CLEAR_LOG();
 
-		this.state.memoryInterval && clearInterval(this.state.memoryInterval);
-		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, downloadTree: false, clusteringData: undefined, memoryInterval: setInterval(this.getMemory, 1000) })
+		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, downloadTree: false, clusteringData: undefined })
 
 		let inputAln = undefined;
 		if (this.state.skipAlignment) {
@@ -594,15 +593,10 @@ export class App extends Component {
 			await this.runLSD2();
 		}
 		const timeElapsed = (new Date().getTime() - this.state.startTime) / 1000;
-		this.state.memoryInterval && clearInterval(this.state.memoryInterval);
-		this.setState({ done: true, timeElapsed, memoryInterval: undefined })
+		this.setState({ done: true, timeElapsed })
 		LOG(`Done!`);
 		LOG(`Time Elapsed: ${timeElapsed.toFixed(3)} seconds`);
-		if (this.state.peakMemory > 0) {
-			LOG(`Estimated Peak Memory: ${(this.state.peakMemory / 1000000).toFixed(3)} MB`);
-		} else {
-			LOG(`Estimated Peak Memory: ${(await this.getMemory() / 1000000).toFixed(3)} MB`);
-		}
+		LOG(`Estimated Peak Memory: ${(await this.getMemory() / 1000000).toFixed(3)} MB`);
 	}
 
 	runViralMSA = async () => {
@@ -645,6 +639,7 @@ export class App extends Component {
 		} else {
 			await this.runMinimap2('minimap2 -t 1 -d ref.fas.mmi ref.fas', inputSeq, refSeq, isGZIP);
 			const samFileData = await this.runMinimap2('minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o sequence.fas.sam ref.fas.mmi sequence.fas' + (isGZIP ? ".gz" : ""), inputSeq, refSeq, isGZIP);
+			await this.biowasmClearFiles();
 			await this.pyodideRunViralMSA(samFileData, refSeq, this.state.omitRef);
 		}
 	}
@@ -1011,9 +1006,8 @@ export class App extends Component {
 	getMemory = async () => {
 		try {
 			const result = await performance.measureUserAgentSpecificMemory();
-			if (result.bytes > this.state.peakMemory) {
-				this.setState({ peakMemory: result.bytes })
-			}
+			this.setState(prevState => ({ peakMemory: Math.max(result.bytes, prevState.peakMemory) }))
+			console.log(result.bytes)
 			return result.bytes;
 		} catch (error) {
 			console.log(error);
