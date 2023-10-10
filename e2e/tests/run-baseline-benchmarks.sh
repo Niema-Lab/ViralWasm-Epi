@@ -42,7 +42,8 @@ run_benchmark() {
 	# get sequence length for lsd2
 	sequence_length=$(seqtk seq -l 0 $OUT_DIR/$1.fas.sam.aln | sed -n '2p' | wc -c)
 
-	/usr/bin/time -v lsd2 -i phylogenetic.tree -d $1.$2.dates.txt -r a -l -1 -u 0 -q 0.2 -R 365 -t 0.00000000010000000000 -v 1 -s $sequence_length -o $OUT_DIR/lsd2_output 2>lsd2_output.log
+	lsd2 -i $OUT_DIR/phylogenetic.tree  -d $1.$2.dates.txt -r a -l -1 -u 0 -q 0.2 -R 365 -t 0.00000000010000000000 -v 1 -s $sequence_length -o $OUT_DIR/lsd2_output 2>lsd2_output.log
+	/usr/bin/time -v lsd2 -i $OUT_DIR/phylogenetic.tree -d $1.$2.dates.txt -r a -l -1 -u 0 -q 0.2 -R 365 -t 0.00000000010000000000 -v 1 -s $sequence_length -o $OUT_DIR/lsd2_output 2>lsd2_output.log
 	update_stats lsd2
 
 	echo $total_time_taken >"$LOG_DIR/total_time.log"

@@ -28,7 +28,7 @@ wget "https://github.com/Niema-Lab/ViralWasm-Files/raw/main/tools/FastTree-v2.1.
 gcc -DUSE_DOUBLE -O3 -finline-functions -funroll-loops -Wall -o FastTree FastTree.c -lm
 sudo mv FastTree /usr/local/bin/fasttree
 rm FastTree.c
-FastTree
+fasttree
 
 # Install seqtk
 cd ~
