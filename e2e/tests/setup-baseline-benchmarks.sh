@@ -15,7 +15,7 @@ ViralMSA.py --help
 
 # Install TN93
 cd ~
-git clone https://github.com/veg/tn93.git --branch v1.0.11
+git clone https://github.com/veg/tn93.git --branch v.1.0.11
 cd tn93
 cmake .
 make install
@@ -24,7 +24,7 @@ tn93 --version
 
 # Install FastTree
 cd ~
-wget "http://www.microbesonline.org/fasttree/FastTreeDbl"
+wget "https://www.microbesonline.org/fasttree/FastTreeDbl"
 chmod a+x FastTreeDbl
 sudo mv FastTreeDbl /usr/local/bin/FastTree
 FastTree
@@ -33,6 +33,7 @@ FastTree
 cd ~
 git clone https://github.com/tothuhien/lsd2.git --branch v.2.3
 cd lsd2/src
+make clean
 make
 sudo mv lsd2 /usr/local/bin/
 lsd2 -h
