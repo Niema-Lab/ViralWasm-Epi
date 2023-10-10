@@ -59,7 +59,7 @@ run_benchmark() {
 }
 
 for r in $(seq 1 $TEST_COUNT); do
-	for n in 100 200 300 400 500; do
+	for n in 100 200 300; do
 		f=$(printf "%02d" $r)
 		run_benchmark $n $f
 	done

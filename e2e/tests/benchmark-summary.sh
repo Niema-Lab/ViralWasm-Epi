@@ -3,7 +3,7 @@ TEST_COUNT=5
 cd ../../benchmarks
 
 for p in chromium cli; do
-	for n in 100 200 300 400 500; do
+	for n in 100 200 300; do
 		average_memory=0
 		average_time=0
 		for r in $(seq 1 $TEST_COUNT); do

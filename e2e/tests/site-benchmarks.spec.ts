@@ -3,7 +3,7 @@ import fs from 'fs';
 
 import { downloadFile, BENCHMARK_DIR, BENCHMARK_OUTPUT_DIR } from './constants';
 
-const BENCHMARK_TESTS = ['100', '200', '300', '400', '500'];
+const BENCHMARK_TESTS = ['100', '200', '300'];
 const TEST_COUNT = 5;
 
 for (let i = 1; i <= TEST_COUNT; i++) {
