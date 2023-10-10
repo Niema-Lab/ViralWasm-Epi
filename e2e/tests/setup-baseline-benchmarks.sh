@@ -24,7 +24,7 @@ tn93 --version
 
 # Install FastTree
 cd ~
-wget "https://www.microbesonline.org/fasttree/FastTreeDbl" --no-check-certificate
+wget -v -d "http://www.microbesonline.org/fasttree/FastTreeDbl"
 chmod a+x FastTreeDbl
 sudo mv FastTreeDbl /usr/local/bin/FastTree
 FastTree
