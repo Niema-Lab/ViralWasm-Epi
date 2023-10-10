@@ -26,7 +26,7 @@ except ModuleNotFoundError:
     print("ERROR: Unable to import Biopython. Install with: pip install biopython", file=sys.stderr); exit(1)
 
 # useful constants
-VERSION = '1.1.33'
+VERSION = '1.1.35'
 RELEASES_URL = 'https://api.github.com/repos/niemasd/ViralMSA/tags'
 CIGAR_LETTERS = {'M','D','I','S','H','=','X'}
 DEFAULT_BUFSIZE = 1048576 # 1 MB #8192 # 8 KB
@@ -1067,12 +1067,12 @@ def main():
     makedirs(args.output)
     global QUIET; QUIET = args.quiet
     global LOGFILE; LOGFILE = open("%s/viralmsa.log" % args.output, 'w')
-    ALIGNERS[args.aligner]['check']()
     if args.sequences.lower().endswith('.sam'):
         INPUT_TYPE = 'SAM'
         num_input_IDs = count_IDs_sam(args.sequences, bufsize=args.buffer_size)
     else: # assume FASTA input if not SAM
         INPUT_TYPE = 'FASTA'
+        ALIGNERS[args.aligner]['check']()
         num_input_IDs = count_IDs_fasta(args.sequences, bufsize=args.buffer_size)
 
     # print run information

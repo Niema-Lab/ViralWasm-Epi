@@ -8,7 +8,7 @@ minimap2 --version
 # Install ViralMSA 
 pip3 install biopython
 cd ~
-wget "https://raw.githubusercontent.com/niemasd/ViralMSA/master/ViralMSA.py"
+wget "https://github.com/Niema-Lab/ViralWasm-Epi/raw/master/public/tools/ViralMSA.py"
 chmod a+x ViralMSA.py
 sudo mv ViralMSA.py /usr/local/bin/
 ViralMSA.py --help
@@ -26,9 +26,17 @@ tn93 --version
 cd ~
 wget "https://github.com/Niema-Lab/ViralWasm-Files/raw/main/tools/FastTree-v2.1.11/FastTree.c"
 gcc -DUSE_DOUBLE -O3 -finline-functions -funroll-loops -Wall -o FastTree FastTree.c -lm
-sudo mv FastTree /usr/local/bin/
-rm FastTree.C
+sudo mv FastTree /usr/local/bin/fasttree
+rm FastTree.c
 FastTree
+
+# Install seqtk
+cd ~
+git clone https://github.com/lh3/seqtk.git --branch v1.4
+cd seqtk
+make
+sudo mv seqtk /usr/local/bin/
+seqtk
 
 # Install LSD2
 cd ~

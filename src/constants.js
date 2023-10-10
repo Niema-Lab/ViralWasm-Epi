@@ -16,7 +16,7 @@ export const EXAMPLE_INPUT_FILE = "data/example_hiv.fas";
 export const EXAMPLE_PRELOADED_REF = "NC_001802";
 export const PATH_TO_PYODIDE_ROOT = "/home/pyodide/";
 export const INPUT_ALN_FILE = "input.aln";
-export const FASTTREE_OUTPUT_FILE = "phylogenetic-tree.newick";
+export const FASTTREE_OUTPUT_FILE = "phylogenetic.tree";
 export const DEFAULT_INPUT_STATE = {
 	useExampleInput: false,
 	inputFile: undefined,

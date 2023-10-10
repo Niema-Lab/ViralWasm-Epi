@@ -839,7 +839,6 @@ export class App extends Component {
 		this.log('\nRunning command: ' + command + '\n\n', false)
 		const FastTreeStartTime = performance.now();
 		const output = await CLI.exec(command)
-		this.log(output.stderr, false);
 		CLI.mount([{
 			name: FASTTREE_OUTPUT_FILE,
 			data: output.stdout,
@@ -964,7 +963,7 @@ export class App extends Component {
 	}
 
 	downloadTree = async () => {
-		this.downloadFile("tree.nwk", await this.state.CLI.fs.readFile(FASTTREE_OUTPUT_FILE, { encoding: "utf8" }));
+		this.downloadFile(FASTTREE_OUTPUT_FILE, await this.state.CLI.fs.readFile(FASTTREE_OUTPUT_FILE, { encoding: "utf8" }));
 	}
 
 	downloadLSD2 = async () => {
