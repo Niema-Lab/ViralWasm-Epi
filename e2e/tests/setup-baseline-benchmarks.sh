@@ -31,7 +31,7 @@ FastTree
 
 # Install LSD2
 cd ~
-git clone https://github.com/tothuhien/lsd2.git --branch v2.3
+git clone https://github.com/tothuhien/lsd2.git --branch v.2.3
 cd lsd2/src
 make
 sudo mv lsd2 /usr/local/bin/
