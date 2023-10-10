@@ -8,13 +8,13 @@
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-	"host": "python3 run_website.py",
+    "host": "python3 run_website.py",
     "host-dev": "http-server dist/ -p 8000 -c-1"
   },
   "dependencies": {
-    "@biowasm/aioli": "^3.1.0",
     "bootstrap": "^5.3.1",
     "bootstrap-icons": "^1.10.5",
+    "jzip": "^1.0.0",
     "marked": "^9.0.0",
     "pyodide": "^0.23.4",
     "react": "^18.2.0",

@@ -24,10 +24,11 @@ const runBenchmark = async (page, browserName: string, alignmentFiles: string[],
 
 	await expect(page.getByTestId('output-text')).toHaveValue(/Time Elapsed:/, { timeout: runTimeout });
 
-	const viralMSATimeOutputLine = (await page.getByTestId('output-text').inputValue()).split('\n').filter(line => line.includes('ViralMSA finished'))[0];
-	const viralMSATimeElapsed = viralMSATimeOutputLine?.split(' ')?.slice(2)?.join('')?.replace(/[^0-9\.]/g, '') ?? '-1';
-	const minimap2TimeOutputLine = (await page.getByTestId('output-text').inputValue()).split('\n').filter(line => line.includes('Minimap2 alignment finished'))[0];
-	const minimap2TimeElapsed = minimap2TimeOutputLine?.split(' ')?.slice(2)?.join('')?.replace(/[^0-9\.]/g, '') ?? '-1';
+	const viralMSATimeElapsed = await getTimeElapsed(page, 'ViralMSA finished');
+	const minimap2TimeElapsed = await getTimeElapsed(page, 'Minimap2 alignment finished');
+	// const tn93TimeElapsed = await getTimeElapsed(page, 'tn93 finished');
+	// const fasttreeTimeElapsed = await getTimeElapsed(page, 'FastTree finished');
+	// const lsd2TimeElapsed = await getTimeElapsed(page, 'LSD2 finished');
 
 	const timeElapsed = (await page.getByTestId('duration-text').textContent()).replace(/[^0-9\.]/g, '');
 	await expect(parseFloat(timeElapsed)).toBeGreaterThan(0);
@@ -47,4 +48,9 @@ const runBenchmark = async (page, browserName: string, alignmentFiles: string[],
 	console.log(downloadedLocation);
 	console.log('Time elapsed: ' + timeElapsed);
 	console.log('Peak memory: ' + peakMemory);
+}
+
+const getTimeElapsed = async (page, filter: string) => {
+	const outputLine = (await page.getByTestId('output-text').inputValue()).split('\n').filter(line => line.includes('ViralMSA finished'))[0];
+	return outputLine?.split(' ')?.slice(2)?.join('')?.replace(/[^0-9\.]/g, '') ?? '-1';
 }

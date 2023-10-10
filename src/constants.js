@@ -79,14 +79,7 @@ export const CLEAR_LOG = () => {
 	textArea.value = "";
 }
 
-export const LOG = (output, extraFormat = true) => {
-	const textArea = document.getElementById(OUTPUT_ID);
-	const date = new Date();
-	textArea.value += (extraFormat ? `${getTimeWithMilliseconds(date)}: ` : '') + output + (extraFormat ? '\n' : '');
-	textArea.scrollTop = textArea.scrollHeight;
-}
-
-export const getTimeWithMilliseconds = date => {
+export const GET_TIME_WITH_MILLISECONDS = (date) => {
 	const t = date.toLocaleTimeString();
 	return `${t.substring(0, 7)}.${("00" + date.getMilliseconds()).slice(-3)}`;
 }

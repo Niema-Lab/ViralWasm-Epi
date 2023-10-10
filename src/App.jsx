@@ -1,10 +1,9 @@
 // TODO: speed up load time / run time
 // TODO: incorporate gzip wherever and optimize memory usage
 // TODO: implement manual reinit
-// TODO: no need for minimap2 ref file indexing? 
 import React, { Component, Fragment } from 'react'
 import { marked } from 'marked'
-import Aioli from "@biowasm/aioli/dist/aioli";
+import JSZip from 'jzip';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
@@ -13,8 +12,9 @@ import './App.scss'
 import loadingCircle from './assets/loading.png'
 
 import {
-	LOG,
+	OUTPUT_ID,
 	CLEAR_LOG,
+	GET_TIME_WITH_MILLISECONDS,
 	OFFLINE_INSTRUCTIONS,
 	OFFLINE_INSTRUCTIONS_KEYWORDS,
 	VIRAL_MSA_REPO_STRUCTURE_LINK,
@@ -34,6 +34,8 @@ import {
 	SEQTK_VERSION,
 	INPUT_ALN_FILE
 } from './constants.js';
+
+let printBiowasm = true;
 
 export class App extends Component {
 	constructor(props) {
@@ -70,9 +72,11 @@ export class App extends Component {
 			downloadAlignment: false,
 			downloadPairwise: false,
 			downloadTree: false,
+			downloadLSD2: false,
 
 			siteReady: false,
 			expandedContainer: undefined,
+			outputAutoscroll: true,
 		}
 	}
 
@@ -97,7 +101,7 @@ export class App extends Component {
 
 	initBiowasm = async () => {
 		this.setState({
-			CLI: await new Aioli([
+			CLI: await new window.Aioli([
 				{
 					tool: "minimap2",
 					version: MINIMAP2_VERSION,
@@ -125,9 +129,11 @@ export class App extends Component {
 					urlPrefix: `${window.location.origin}${import.meta.env.BASE_URL || ''}tools/seqtk`,
 				}], {
 				printInterleaved: false,
+				printStream: true,
+				callback: (msg) => printBiowasm && this.log((msg.stderr ?? msg.stdout) + '\n', false),
 			})
 		}, async () => {
-			LOG('Biowasm loaded.');
+			this.log('Biowasm loaded.');
 		})
 	}
 
@@ -135,10 +141,10 @@ export class App extends Component {
 		// load pyodide
 		const pyodide = await loadPyodide({
 			stdout: (text) => {
-				LOG("STDOUT: " + text + "\n", false)
+				this.log("STDOUT: " + text + "\n", false)
 			},
 			stderr: (text) => {
-				LOG("STDERR: " + text + "\n", false)
+				this.log("STDERR: " + text + "\n", false)
 			},
 		});
 		this.setState({ pyodide })
@@ -165,7 +171,7 @@ export class App extends Component {
 		const REF_NAMES = pyodide.globals.get('REF_NAMES').toJs()
 		// done loading pyodide / ViralMSA 
 		this.setState({ ViralMSAWeb, REFS, REF_NAMES, viralMSAVersion: ' v' + pyodide.globals.get('VERSION'), siteReady: true })
-		LOG("ViralMSA loaded.")
+		this.log("ViralMSA loaded.")
 	}
 
 	disableNumberInputScroll = () => {
@@ -242,11 +248,11 @@ export class App extends Component {
 
 		// write provided files to Pyodide
 		const transferTime = performance.now();
-		LOG('\n', false)
-		LOG('Transferring files to Pyodide for ViralMSA...')
+		this.log('\n', false)
+		this.log('Transferring files to Pyodide for ViralMSA...')
 		pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + 'reference.fas', refSeq, { encoding: "utf8" });
 		pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + 'sequence.fas.sam', inputSamData, { encoding: "utf8" });
-		LOG(`Transferred files in ${((performance.now() - transferTime) / 1000).toFixed(3)} seconds`)
+		this.log(`Transferred files in ${((performance.now() - transferTime) / 1000).toFixed(3)} seconds`)
 
 		let args = "./ViralMSA.py -e email@address.com -s sequence.fas.sam -o output -r reference.fas --viralmsa_dir cache";
 
@@ -254,7 +260,7 @@ export class App extends Component {
 			args += " --omit_ref";
 		}
 
-		LOG('\nRunning command: ' + args + "\n\n", false)
+		this.log('\nRunning command: ' + args + "\n\n", false)
 		pyodide.globals.set("arguments", args);
 
 		// run ViralMSAWeb.py
@@ -262,8 +268,8 @@ export class App extends Component {
 		pyodide.runPython(this.state.ViralMSAWeb);
 
 		// after finished
-		LOG('\n', false)
-		LOG(`ViralMSA finished in ${((performance.now() - viralMSAStartTime) / 1000).toFixed(3)} seconds`)
+		this.log('\n', false)
+		this.log(`ViralMSA finished in ${((performance.now() - viralMSAStartTime) / 1000).toFixed(3)} seconds\n`)
 		this.setState({ viralMSADownloadResults: true, downloadAlignment: true })
 
 		await this.pyodideClearFiles(false);
@@ -312,14 +318,14 @@ export class App extends Component {
 		}
 
 		// run minimap2 in BioWASM
-		LOG('\n', false);
-		LOG('Aligning sequences...')
-		LOG('Running command: ' + command + '\n')
+		this.log('\n', false);
+		this.log('Aligning sequences...')
+		this.log('Running command: ' + command + '\n')
 
 		const minimap2StartTime = performance.now();
-		LOG((await CLI.exec(command)).stderr, false);
-		LOG('\n', false);
-		LOG(`Minimap2 alignment finished in ${((performance.now() - minimap2StartTime) / 1000).toFixed(3)} seconds`)
+		this.log((await CLI.exec(command)).stderr, false);
+		this.log('\n', false);
+		this.log(`Minimap2 alignment finished in ${((performance.now() - minimap2StartTime) / 1000).toFixed(3)} seconds`)
 
 		// set file data (sequence alignment / map file)
 		return await CLI.fs.readFile("sequence.fas.sam", { encoding: "utf8" });
@@ -546,15 +552,20 @@ export class App extends Component {
 
 		if (!valid) {
 			alert("Invalid input. Please check your input and try again.")
-			LOG("Invalid input. Please check your input and try again.")
+			this.log("Invalid input. Please check your input and try again.")
 			return;
 		}
 
-		window.scrollTo(0, window.innerHeight / 4);
+		// scroll to top
+		window.scrollTo({
+			top: window.innerHeight / 4,
+			left: 0,
+			behavior: 'instant'
+		});
 		await this.biowasmClearFiles();
 		CLEAR_LOG();
 
-		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, downloadTree: false, clusteringData: undefined })
+		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, downloadTree: false, downloadLSD2: false, clusteringData: undefined })
 
 		let inputAln = undefined;
 		if (this.state.skipAlignment) {
@@ -583,9 +594,9 @@ export class App extends Component {
 		}
 		const timeElapsed = (new Date().getTime() - this.state.startTime) / 1000;
 		this.setState({ done: true, timeElapsed })
-		LOG(`Done!`);
-		LOG(`Time Elapsed: ${timeElapsed.toFixed(3)} seconds`);
-		LOG(`Estimated Peak Memory: ${(await this.getMemory() / 1000000).toFixed(3)} MB`);
+		this.log(`Done!`);
+		this.log(`Time Elapsed: ${timeElapsed.toFixed(3)} seconds`);
+		this.log(`Estimated Peak Memory: ${(await this.getMemory() / 1000000).toFixed(3)} MB`);
 	}
 
 	runViralMSA = async () => {
@@ -605,7 +616,7 @@ export class App extends Component {
 		let isGZIP;
 
 		const readStartTime = performance.now();
-		LOG("Reading input sequence file...")
+		this.log("Reading input sequence file...")
 		if (this.state.useExampleInput) {
 			inputSeq = this.state.exampleInput;
 			isSAM = false;
@@ -621,7 +632,7 @@ export class App extends Component {
 			// only need to provide refID when using a preloaded reference sequence and index
 			refSeq = await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_REF_GENOMES_DIR}` + this.state.preloadedRef + "/" + this.state.preloadedRef + ".fas")).text();
 		}
-		LOG(`Read input sequence file in ${((performance.now() - readStartTime) / 1000).toFixed(3)} seconds`)
+		this.log(`Read input sequence file in ${((performance.now() - readStartTime) / 1000).toFixed(3)} seconds`)
 
 		if (isSAM) {
 			await this.pyodideRunViralMSA(inputSeq, refSeq, this.state.omitRef);
@@ -713,23 +724,24 @@ export class App extends Component {
 		// add input file
 		command += " " + INPUT_ALN_FILE;
 
-		LOG("Running tn93...")
+		this.log("Running tn93...")
 		const CLI = this.state.CLI;
 
 		// create output file
 		await CLI.fs.writeFile(tn93OutputFile, "", { encoding: "utf8" });
 
 		// run tn93 in BioWASM
-		LOG('\nRunning command: ' + command + '\n\n', false)
+		this.log('\nRunning command: ' + command + '\n\n', false)
+		const TN93StartTime = performance.now();
 		await CLI.exec(command);
+		this.log(`tn93 finished in ${((performance.now() - TN93StartTime) / 1000).toFixed(3)} seconds`);
 
-		LOG("tn93 finished!\n")
 		this.setState({ biowasmDownloadResults: true, downloadPairwise: true })
 		this.runMolecularClustering(await CLI.fs.readFile(tn93OutputFile, { encoding: "utf8" }));
 	}
 
 	runMolecularClustering = (pairwiseFile) => {
-		LOG("Running molecular clustering...")
+		this.log("Running molecular clustering...")
 		const clusteringThreshold = this.state.clusterThreshold === "" ? DEFAULT_INPUT_STATE.clusterThreshold : this.state.clusterThreshold;
 		const delimiter = this.state.format.includes('tsv') ? "\t" : ",";
 		let clusteringData = "SequenceName" + delimiter + "ClusterNumber\n";
@@ -813,32 +825,34 @@ export class App extends Component {
 			clusteringData += `${seq}${delimiter}${cluster}\n`;
 		}
 
-		LOG("Molecular clustering finished!\n")
+		this.log("Molecular clustering finished!\n")
 		this.setState({ clusteringData })
 	}
 
 	runFasttree = async () => {
 		const CLI = this.state.CLI;
 
-		LOG("Running FastTree for phylogenetic inference... (This takes significantly longer than the other steps)")
+		this.log("Running FastTree for phylogenetic inference... (This takes significantly longer than the other steps)")
 
 		const command = `fasttree${this.state.gtrModel ? " -gtr" : ""}${this.state.gammaLikelihoods ? " -gamma" : ""} -nt ${INPUT_ALN_FILE}`;
 
-		LOG('\nRunning command: ' + command + '\n\n', false)
+		this.log('\nRunning command: ' + command + '\n\n', false)
+		const FastTreeStartTime = performance.now();
 		const output = await CLI.exec(command)
-		LOG(output.stderr, false);
+		this.log(output.stderr, false);
 		CLI.mount([{
 			name: FASTTREE_OUTPUT_FILE,
 			data: output.stdout,
 		}]);
-		LOG("FastTree finished!\n")
+		this.log('\n', false)
+		this.log(`FastTree finished in ${((performance.now() - FastTreeStartTime) / 1000).toFixed(3)} seconds\n`);
 		this.setState({ downloadTree: true })
 	}
 
 	runLSD2 = async () => {
 		const CLI = this.state.CLI;
 
-		LOG("Running LSD2 for tree rooting and dating...")
+		this.log("Running LSD2 for tree rooting and dating...")
 
 		let command = "lsd2 -i " + FASTTREE_OUTPUT_FILE;
 
@@ -903,16 +917,19 @@ export class App extends Component {
 			length: 40000000,
 		}), { encoding: "binary" });
 
+		printBiowasm = false;
 		const formatted = await CLI.exec("seqtk seq -l 0 input-trim.aln");
 		await CLI.fs.writeFile("input-trim-formatted.aln", formatted.stdout, { encoding: "utf8" });
 
 		const seqLength = (await CLI.exec("sed -n 2p input-trim-formatted.aln")).stdout.length;
+		printBiowasm = true;
 		command += " -s " + seqLength;
 
-		LOG('\nRunning command: ' + command + '\n\n', false)
-		const output = await CLI.exec(command)
-		LOG(output.stdout, false);
-		LOG('LSD2 Finished!');
+		this.log('\nRunning command: ' + command + '\n', false)
+		const LSD2StartTime = performance.now();
+		await CLI.exec(command)
+		this.log(`LSD2 finished in ${((performance.now() - LSD2StartTime) / 1000).toFixed(3)} seconds\n`);
+		this.setState({ downloadLSD2: true })
 	}
 
 	downloadAlignment = () => {
@@ -924,7 +941,6 @@ export class App extends Component {
 
 		for (const download of downloads) {
 			// first element of array is filename, second element is content
-			LOG(`Downloading ${download[0]}`)
 			this.downloadFile(download[0], download[1])
 		}
 	}
@@ -938,7 +954,6 @@ export class App extends Component {
 
 		for (const download of downloads) {
 			// first element of array is filename, second element is content
-			LOG(`Downloading ${download[0]}`)
 			this.downloadFile(download[0], download[1])
 		}
 	}
@@ -952,13 +967,35 @@ export class App extends Component {
 		this.downloadFile("tree.nwk", await this.state.CLI.fs.readFile(FASTTREE_OUTPUT_FILE, { encoding: "utf8" }));
 	}
 
-	downloadFile = (filename, text) => {
+	downloadLSD2 = async () => {
+		const CLI = this.state.CLI;
+		const zip = new JSZip();
+
+		const result = await CLI.fs.readFile(FASTTREE_OUTPUT_FILE + ".result", { encoding: "binary" });
+		const resultDateNexus = await CLI.fs.readFile(FASTTREE_OUTPUT_FILE + ".result.date.nexus", { encoding: "binary" });
+		const resultNwk = await CLI.fs.readFile(FASTTREE_OUTPUT_FILE + ".result.nwk", { encoding: "binary" });
+
+		zip.file(FASTTREE_OUTPUT_FILE + ".result", result);
+		zip.file(FASTTREE_OUTPUT_FILE + ".result.date.nexus", resultDateNexus);
+		zip.file(FASTTREE_OUTPUT_FILE + ".result.nwk", resultNwk);
+		const zipBlob = zip.generate({ type: "blob" })
+		this.downloadFile("lsd2-results.zip", zipBlob, true);
+	}
+
+	downloadFile = (filename, content, isBlob = false) => {
 		var a = document.createElement('a');
-		a.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+		if (isBlob) {
+			const objectUrl = URL.createObjectURL(content);
+			a.setAttribute('href', objectUrl);
+		} else {
+			a.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
+		}
 		a.setAttribute('download', filename);
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);
+
+		this.log(`Downloaded ${filename}`)
 	}
 
 	// helper function to read file as text or arraybuffer and promisify
@@ -982,6 +1019,10 @@ export class App extends Component {
 		});
 	}
 
+	toggleOutputAutoscroll = () => {
+		this.setState(prevState => { return { outputAutoscroll: !prevState.outputAutoscroll } });
+	}
+
 	showOfflineInstructions = (e) => {
 		e.preventDefault();
 		this.setState({ showOfflineInstructions: true })
@@ -995,11 +1036,17 @@ export class App extends Component {
 		try {
 			const result = await performance.measureUserAgentSpecificMemory();
 			this.setState(prevState => ({ peakMemory: Math.max(result.bytes, prevState.peakMemory) }))
-			console.log(result.bytes)
 			return result.bytes;
 		} catch (error) {
 			console.log(error);
 		}
+	}
+
+	log = (output, extraFormat = true) => {
+		const textArea = document.getElementById(OUTPUT_ID);
+		const date = new Date();
+		textArea.value += (extraFormat ? `${GET_TIME_WITH_MILLISECONDS(date)}: ` : '') + output + (extraFormat ? '\n' : '');
+		if (this.state.outputAutoscroll) textArea.scrollTop = textArea.scrollHeight;
 	}
 
 	render() {
@@ -1257,6 +1304,12 @@ export class App extends Component {
 							</h4>
 						</div>
 						<textarea className="form-control" id="output-console" data-testid="output-text" datarows="3" spellCheck="false"></textarea>
+						<div className="form-check my-3">
+							<input className="form-check-input mt-1" type="checkbox" id="output-autoscroll" checked={this.state.outputAutoscroll} onChange={this.toggleOutputAutoscroll} />
+							<label className="form-check-label ms-1" htmlFor="output-autoscroll">
+								Autoscroll with output
+							</label>
+						</div>
 						<div id="download-buttons" className="mt-4">
 							{this.state.downloadAlignment &&
 								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadAlignment}>Download Alignment</button>
@@ -1269,6 +1322,9 @@ export class App extends Component {
 							}
 							{this.state.downloadTree &&
 								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadTree}>Download Phylogenetic Tree</button>
+							}
+							{this.state.downloadLSD2 &&
+								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadLSD2}>Download LSD2 Results</button>
 							}
 						</div>
 						<div id="duration" className="my-3">
