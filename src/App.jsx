@@ -858,11 +858,11 @@ export class App extends Component {
 
 		// mount date file
 		await CLI.mount([{
-			name: "date.date",
+			name: "date.txt",
 			data: await this.fileReaderReadFile(this.state.LSD2DateFile),
 		}]);
 
-		command += " -d date.date";
+		command += " -d date.txt";
 
 		// outgroup file
 		if (this.state.LSD2OutgroupFile) {
@@ -1123,7 +1123,7 @@ export class App extends Component {
 							</div>
 
 							<div className="form-check mt-5">
-								<input className="form-check-input" type="checkbox" id="molecular-clustering-check" checked={this.state.performMolecularClustering} onChange={() => this.toggleMolecularClusteringArgs()} />
+								<input className="form-check-input" type="checkbox" id="molecular-clustering-check" data-testid="molecular-clustering-check" checked={this.state.performMolecularClustering} onChange={() => this.toggleMolecularClusteringArgs()} />
 								<label className="form-check-label" htmlFor="molecular-clustering-check">
 									<h6 id="perform-molecular-clustering">&nbsp;Perform Molecular Clustering <i className={`bi bi-chevron-${this.state.performMolecularClustering ? 'up' : 'down'}`}></i></h6>
 								</label>
@@ -1211,7 +1211,7 @@ export class App extends Component {
 							</div>
 
 							<div className="form-check mt-5">
-								<input className="form-check-input" type="checkbox" id="phylo-inference-check" checked={this.state.performPhyloInference} onChange={() => this.togglePhyloInferenceArgs()} />
+								<input className="form-check-input" type="checkbox" id="phylo-inference-check" data-testid="phylo-inference-check" checked={this.state.performPhyloInference} onChange={() => this.togglePhyloInferenceArgs()} />
 								<label className="form-check-label" htmlFor="phylo-inference-check">
 									<h6 id="perform-phylo-inference">&nbsp;Perform Phylogenetic Inference <i className={`bi bi-chevron-${this.state.performPhyloInference ? 'up' : 'down'}`}></i></h6>
 								</label>
@@ -1235,7 +1235,7 @@ export class App extends Component {
 							</div>
 
 							<div className={`form-check mt-5 ${!this.state.performPhyloInference && 'disabled-input'}`}>
-								<input className="form-check-input" type="checkbox" id="lsd2-check" checked={this.state.performLSD2} onChange={() => this.toggleLSD2()} />
+								<input className="form-check-input" type="checkbox" id="lsd2-check" data-testid="lsd2-check" checked={this.state.performLSD2} onChange={() => this.toggleLSD2()} />
 								<label className="form-check-label" htmlFor="lsd2-check">
 									<h6 id="perform-lsd2">&nbsp;Perform Tree Rooting and Dating <i className={`bi bi-chevron-${this.state.performLSD2 ? 'up' : 'down'}`}></i></h6>
 								</label>

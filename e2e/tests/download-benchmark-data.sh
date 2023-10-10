@@ -1,3 +1,4 @@
+RUN_COUNT=5
 SCRIPTPATH=$(dirname "$PWD")
 
 cd $SCRIPTPATH
@@ -5,8 +6,12 @@ rm -rf data
 mkdir data
 cd data
 
-curl -LO https://raw.githubusercontent.com/niemasd/ViralMSA-Paper/master/data/SARSCOV2/MT072688.fasta
+curl -LO https://github.com/Niema-Lab/ViralWasm-Files/raw/main/reference_genomes/HIV-1/NC_001802.fas
 
-for n in 100 200 400 1000 2000 4000; do
-	curl -LO https://github.com/niemasd/ViralMSA-Paper/raw/master/data/SARSCOV2/$n/$n.01.true.fas.gz
+for r in $(seq 1 $RUN_COUNT); do
+	for n in 100 200; do
+		f=$(printf "%02d" $r)
+		curl -LO "https://github.com/Niema-Lab/ViralWasm-Files/raw/main/benchmark_files/ViralWasm-Epi/$n/$n.$f.dates.txt"
+		curl -LO "https://github.com/Niema-Lab/ViralWasm-Files/raw/main/benchmark_files/ViralWasm-Epi/$n/$n.$f.seqs.fas.gz"
+	done
 done

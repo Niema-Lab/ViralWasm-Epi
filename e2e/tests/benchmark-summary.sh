@@ -3,11 +3,12 @@ TEST_COUNT=5
 cd ../../benchmarks
 
 for p in chromium cli; do
-	for n in 100 200 400 1000 2000 4000; do
+	for n in 100 200; do
 		average_memory=0
 		average_time=0
 		for r in $(seq 1 $TEST_COUNT); do
-			cd "$n.$r/$p"
+			f=$(printf "%02d" $r)
+			cd "$n.$f/$p"
 			memory=$(cat memory.log)
 			average_memory=$(echo "$memory + $average_memory" | bc)
 			time=$(cat time.log)
