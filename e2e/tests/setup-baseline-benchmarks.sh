@@ -24,9 +24,10 @@ tn93 --version
 
 # Install FastTree
 cd ~
-curl http://www.microbesonline.org/fasttree/FastTreeDbl --output FastTree
-chmod a+x FastTree
+wget "https://github.com/Niema-Lab/ViralWasm-Files/raw/main/tools/FastTree-v2.1.11/FastTree.c"
+gcc -DUSE_DOUBLE -O3 -finline-functions -funroll-loops -Wall -o FastTree FastTree.c -lm
 sudo mv FastTree /usr/local/bin/
+rm FastTree.C
 FastTree
 
 # Install LSD2
