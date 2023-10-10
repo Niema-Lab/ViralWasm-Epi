@@ -299,43 +299,30 @@ export class App extends Component {
 		const CLI = this.state.CLI;
 		this.setState({ biowasmDownloadResults: false })
 
-		if (command.includes('-d')) {
-			// build minimap2 index
-			await CLI.mount([{
-				name: "ref.fas",
-				data: refSeq,
-			}]);
+		await CLI.mount([{
+			name: "ref.fas",
+			data: refSeq,
+		}]);
 
-			// run minimap2 in BioWASM
-			LOG('\n', false);
-			LOG('Building index for reference sequence...')
-			LOG('Running command: ' + command + '\n')
-
-			const minimap2StartTime = performance.now();
-			LOG((await CLI.exec(command)).stderr, false);
-			LOG('\n', false)
-			LOG(`Minimap2 indexing finished in ${((performance.now() - minimap2StartTime) / 1000).toFixed(3)} seconds`)
-		} else if (command.includes('-a')) {
-			// alignment
-			if (isGZIP) {
-				await CLI.fs.writeFile("sequence.fas.gz", new Uint8Array(inputSeq), { encoding: "binary" });
-			} else {
-				await CLI.fs.writeFile("sequence.fas", inputSeq, { encoding: "utf8" });
-			}
-
-			// run minimap2 in BioWASM
-			LOG('\n', false);
-			LOG('Aligning sequences...')
-			LOG('Running command: ' + command + '\n')
-
-			const minimap2StartTime = performance.now();
-			LOG((await CLI.exec(command)).stderr, false);
-			LOG('\n', false);
-			LOG(`Minimap2 alignment finished in ${((performance.now() - minimap2StartTime) / 1000).toFixed(3)} seconds`)
-
-			// set file data (sequence alignment / map file)
-			return await CLI.fs.readFile("sequence.fas.sam", { encoding: "utf8" });
+		// alignment
+		if (isGZIP) {
+			await CLI.fs.writeFile("sequence.fas.gz", new Uint8Array(inputSeq), { encoding: "binary" });
+		} else {
+			await CLI.fs.writeFile("sequence.fas", inputSeq, { encoding: "utf8" });
 		}
+
+		// run minimap2 in BioWASM
+		LOG('\n', false);
+		LOG('Aligning sequences...')
+		LOG('Running command: ' + command + '\n')
+
+		const minimap2StartTime = performance.now();
+		LOG((await CLI.exec(command)).stderr, false);
+		LOG('\n', false);
+		LOG(`Minimap2 alignment finished in ${((performance.now() - minimap2StartTime) / 1000).toFixed(3)} seconds`)
+
+		// set file data (sequence alignment / map file)
+		return await CLI.fs.readFile("sequence.fas.sam", { encoding: "utf8" });
 	}
 
 	biowasmClearFiles = async () => {
@@ -639,8 +626,7 @@ export class App extends Component {
 		if (isSAM) {
 			await this.pyodideRunViralMSA(inputSeq, refSeq, this.state.omitRef);
 		} else {
-			// await this.runMinimap2('minimap2 -t 1 -d ref.fas.mmi ref.fas', inputSeq, refSeq, isGZIP);
-			const samFileData = await this.runMinimap2('minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o sequence.fas.sam ref.fas.mmi sequence.fas' + (isGZIP ? ".gz" : ""), inputSeq, refSeq, isGZIP);
+			const samFileData = await this.runMinimap2('minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o sequence.fas.sam ref.fas sequence.fas' + (isGZIP ? ".gz" : ""), inputSeq, refSeq, isGZIP);
 			await this.biowasmClearFiles();
 			await this.pyodideRunViralMSA(samFileData, refSeq, this.state.omitRef);
 		}

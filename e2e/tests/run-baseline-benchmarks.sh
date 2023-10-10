@@ -15,7 +15,7 @@ run_benchmark() {
 	total_time_taken=0
 	peak_memory=0
 
-	/usr/bin/time -v minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o "$1.fas.sam" MT072688.fasta.mmi "$1.01.true.fas.gz" 2>minimap2_output.log
+	/usr/bin/time -v minimap2 -t 1 --score-N=0 --secondary=no --sam-hit-only -a -o "$1.fas.sam" MT072688.fasta "$1.01.true.fas.gz" 2>minimap2_output.log
 	minimap2_time_taken=$(grep "User time (seconds): " minimap2_output.log | awk '{print $4}')
 	total_time_taken=$(echo "$minimap2_time_taken + $total_time_taken" | bc)
 	memory=$(grep "Maximum resident set size (kbytes): " minimap2_output.log | awk '{print $6}')
