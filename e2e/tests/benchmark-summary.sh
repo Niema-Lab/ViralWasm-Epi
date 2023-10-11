@@ -15,8 +15,8 @@ for p in chromium cli; do
 			average_time=$(echo "$time + $average_time" | bc)
 			cd ../../
 		done
-		average_memory=$(echo "$average_memory / 10" | bc)
-		average_time=$(echo "scale=3; $average_time / 10" | bc)
+		average_memory=$(echo "$average_memory / $TEST_COUNT" | bc)
+		average_time=$(echo "scale=3; $average_time / $TEST_COUNT" | bc)
 		echo "$p $n sequences, average runtime: $average_time seconds, average peak memory: $average_memory KB" >> summary.log
 	done
 done
