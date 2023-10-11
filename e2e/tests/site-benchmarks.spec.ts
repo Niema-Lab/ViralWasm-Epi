@@ -3,7 +3,7 @@ import fs from 'fs';
 
 import { downloadFile, BENCHMARK_DIR, BENCHMARK_OUTPUT_DIR } from './constants';
 
-const BENCHMARK_TESTS = ['100', '200', '300'];
+const BENCHMARK_TESTS = ['100', '200', '300', '400'];
 const TEST_COUNT = 5;
 
 for (let i = 1; i <= TEST_COUNT; i++) {
@@ -16,7 +16,7 @@ for (let i = 1; i <= TEST_COUNT; i++) {
 				'./e2e/data/NC_001802.fas',
 				'./e2e/data/' + sequenceSize + '.' + String(i).padStart(2, '0') + '.dates.txt',
 				sequenceSize + '.' + String(i).padStart(2, '0') + '/',
-				parseInt(sequenceSize) * 600);
+				parseInt(sequenceSize) * parseInt(sequenceSize) * 20);
 		});
 	}
 }

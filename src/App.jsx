@@ -1,3 +1,4 @@
+// TODO: 300 seq timing out
 // TODO: speed up load time / run time
 // TODO: incorporate gzip wherever and optimize memory usage
 // TODO: implement manual reinit
@@ -34,8 +35,6 @@ import {
 	SEQTK_VERSION,
 	INPUT_ALN_FILE
 } from './constants.js';
-
-let printBiowasm = true;
 
 export class App extends Component {
 	constructor(props) {
@@ -130,7 +129,7 @@ export class App extends Component {
 				}], {
 				printInterleaved: false,
 				printStream: true,
-				callback: (msg) => printBiowasm && this.log((msg.stderr ?? msg.stdout) + '\n', false),
+				callback: (msg) => msg.stderr && this.log(msg.stderr + '\n', false),
 			})
 		}, async () => {
 			this.log('Biowasm loaded.');
@@ -916,12 +915,10 @@ export class App extends Component {
 			length: 40000000,
 		}), { encoding: "binary" });
 
-		printBiowasm = false;
 		const formatted = await CLI.exec("seqtk seq -l 0 input-trim.aln");
 		await CLI.fs.writeFile("input-trim-formatted.aln", formatted.stdout, { encoding: "utf8" });
 
 		const seqLength = (await CLI.exec("sed -n 2p input-trim-formatted.aln")).stdout.length;
-		printBiowasm = true;
 		command += " -s " + seqLength;
 
 		this.log('\nRunning command: ' + command + '\n', false)
