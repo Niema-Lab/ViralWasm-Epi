@@ -46,7 +46,7 @@ run_benchmark() {
 	/usr/bin/time -v lsd2 -i $OUT_DIR/phylogenetic.tree -d $1.$2.dates.txt -r a -l -1 -u 0 -q 0.2 -R 365 -t 0.00000000010000000000 -v 1 -s $sequence_length -o $OUT_DIR/lsd2_output 2>lsd2_output.log
 	update_stats lsd2
 
-	echo $total_time_taken >"$LOG_DIR/total_time.log"
+	echo $total_time_taken >"$LOG_DIR/time.log"
 	echo $peak_memory >"$LOG_DIR/memory.log"
 
 	rm -rf cache

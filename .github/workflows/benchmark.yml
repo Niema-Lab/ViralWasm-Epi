@@ -11,11 +11,6 @@ on:
 permissions:
   contents: write
 
-# Allow one concurrent deployment
-concurrency:
-  group: 'benchmark'
-  cancel-in-progress: true
-
 jobs:
   benchmark:
     timeout-minutes: 240
