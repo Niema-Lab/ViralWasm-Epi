@@ -148,13 +148,6 @@ export class App extends Component {
 		});
 		this.setState({ pyodide })
 
-		// load micropip, a package manager for Pyodide
-		await pyodide.loadPackage("micropip");
-		const micropip = pyodide.pyimport("micropip");
-
-		// install biopython, a ViralMSA dependency
-		await micropip.install('biopython');
-
 		// create cache directory for ViralMSA sequences and indexes 
 		pyodide.FS.mkdir(PATH_TO_PYODIDE_ROOT + 'cache');
 
