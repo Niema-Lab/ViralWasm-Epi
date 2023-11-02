@@ -1,10 +1,10 @@
 // TODO: 300 seq timing out
-// TODO: speed up load time / run time
 // TODO: incorporate gzip wherever and optimize memory usage
 // TODO: implement manual reinit
 import React, { Component, Fragment } from 'react'
 import { marked } from 'marked'
 import JSZip from 'jzip';
+import Taxonium from 'taxonium-component';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
@@ -557,7 +557,7 @@ export class App extends Component {
 		await this.biowasmClearFiles();
 		CLEAR_LOG();
 
-		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, downloadTree: false, downloadLSD2: false, clusteringData: undefined })
+		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, downloadTree: false, downloadLSD2: false, clusteringData: undefined, phyloTree: { ...DEFAULT_INPUT_STATE.phyloTree } })
 
 		let inputAln = undefined;
 		if (this.state.skipAlignment) {
@@ -837,7 +837,12 @@ export class App extends Component {
 		}]);
 		this.log('\n', false)
 		this.log(`FastTree finished in ${((performance.now() - FastTreeStartTime) / 1000).toFixed(3)} seconds\n`);
-		this.setState({ downloadTree: true })
+		const phyloTree = {
+			...this.state.phyloTree,
+			data: output.stdout,
+		}
+		console.log(phyloTree)
+		this.setState({ downloadTree: true, phyloTree })
 	}
 
 	runLSD2 = async () => {
@@ -1021,6 +1026,16 @@ export class App extends Component {
 		this.setState({ showOfflineInstructions: false })
 	}
 
+	showTaxonium = async () => {
+		this.setState({ showTaxonium: true })
+		document.getElementsByTagName('body')[0].classList.add('no-overflow');
+	}
+
+	hideTaxonium = () => {
+		this.setState({ showTaxonium: false })
+		document.getElementsByTagName('body')[0].classList.remove('no-overflow');
+	}
+
 	getMemory = async () => {
 		try {
 			const result = await performance.measureUserAgentSpecificMemory();
@@ -1040,7 +1055,7 @@ export class App extends Component {
 
 	render() {
 		return (
-			<div className="root pb-5">
+			<div className='pb-5'>
 				<h2 className="mt-5 mb-2 text-center" >ViralWasm-Epi</h2>
 				<p className="text-center my-3">
 					A serverless WebAssembly-based pipeline for multi-sequence alignment and molecular clustering. <br />
@@ -1316,6 +1331,11 @@ export class App extends Component {
 								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadLSD2}>Download LSD2 Results</button>
 							}
 						</div>
+						<div id="preview-buttons" className="mt-4 w-100">
+							{this.state.downloadTree &&
+								<button type="button" className="btn btn-success mt-3" onClick={this.showTaxonium}>Visualize Phylogenetic Tree</button>
+							}
+						</div>
 						<div id="duration" className="my-3">
 							{this.state.timeElapsed &&
 								<p id="duration-text" data-testid="duration-text">Total runtime: {this.state.timeElapsed} seconds</p>
@@ -1342,6 +1362,18 @@ export class App extends Component {
 								<h5 className="card-title text-center mt-3 mb-4">Running ViralWasm-Epi Offline</h5>
 								<div dangerouslySetInnerHTML={{ __html: this.state.offlineInstructions }} />
 							</div>
+						</div>
+					</div>
+				}
+
+				{
+					this.state.downloadTree &&
+					<div id="taxonium-container" className={this.state.showTaxonium ? '' : 'd-none'}>
+						<div id="taxonium">
+							<Taxonium sourceData={this.state.phyloTree} />
+						</div>
+						<div id="close-taxonium">
+							<button type="button" className="btn btn-primary mt-4" onClick={this.hideTaxonium}>Close Phylogenetic Tree Preview</button>
 						</div>
 					</div>
 				}

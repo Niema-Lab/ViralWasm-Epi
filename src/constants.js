@@ -21,7 +21,7 @@ export const DEFAULT_INPUT_STATE = {
 	useExampleInput: false,
 	inputFile: undefined,
 	validInputFile: true,
-	
+
 	skipAlignment: false,
 	preloadedRef: undefined,
 	refFile: undefined,
@@ -50,10 +50,17 @@ export const DEFAULT_INPUT_STATE = {
 	performMolecularClustering: false,
 	clusterThreshold: 0.015,
 	validClusterThreshold: true,
-	
+
 	performPhyloInference: false,
 	gtrModel: true,
 	gammaLikelihoods: true,
+	showTaxonium: false,
+	phyloTree: {
+		status: "loaded",
+		filename: "phylogenetic.tree",
+		data: '',
+		filetype: "nwk",
+	},
 
 	performLSD2: false,
 	LSD2DateFile: undefined,

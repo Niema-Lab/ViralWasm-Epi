@@ -9,8 +9,16 @@ body {
 	font-size: 0.9rem !important;
 }
 
+#root>div {
+	min-height: 100vh;
+}
+
 code {
 	font-size: 1em;
+}
+
+.no-overflow {
+	overflow: hidden;
 }
 
 .form-check-label {
@@ -91,7 +99,8 @@ code {
 			font-weight: bold;
 		}
 
-		#download-buttons {
+		#download-buttons,
+		#preview-buttons {
 			display: flex;
 			justify-content: space-evenly;
 			align-items: stretch;
@@ -146,6 +155,36 @@ footer {
 			right: 0;
 			margin: 1.5rem 2rem;
 			opacity: 1;
+		}
+	}
+}
+
+#taxonium-container {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 100;
+	width: 100vw;
+	height: 100vh;
+	background-color: white;
+
+	#taxonium {
+		position: relative;
+		top: 0;
+		left: 5%;
+		width: 100%;
+		height: 100%;
+	}
+
+	#close-taxonium {
+		position: absolute;
+		top: 0;
+		display: flex;
+		justify-content: center;
+		width: 100%;
+
+		button {
+			font-size: 0.9rem;
 		}
 	}
 }
