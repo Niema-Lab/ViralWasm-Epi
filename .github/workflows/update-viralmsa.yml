@@ -1,0 +1,62 @@
+name: update ViralMSA
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets the GITHUB_TOKEN permissions to allow deployment to GitHub Pages
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment
+concurrency:
+  group: 'update-viralmsa'
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install dependencies
+        run: npm ci
+      - name: Update ViralMSA
+        run: cd scripts && bash update_viralmsa.sh
+      - name: Build site for Playwright and offline mode
+        env: 
+          VITE_OFFLINE_VERSION: true
+        run: npm run build
+      - name: Push offline mode to master
+        run: |  
+          zip -r viralwasm-epi-offline.zip dist/ run_website.py
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'action@github.com'
+          git add .
+
+          # Check for changes
+          if git diff-index --quiet HEAD --; then
+            # No changes
+            echo "No changes to commit"
+          else
+            # Changes detected
+            git commit -m "Add offline mode zip"
+            git push origin master
+          fi
+      - name: Build for github pages
+        run: npm run build
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          # Upload dist repository
+          path: './dist'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
