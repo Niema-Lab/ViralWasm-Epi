@@ -30,11 +30,11 @@ jobs:
         run: |
           cd scripts/
           bash update-viralmsa.sh
-      - name: Build site for Playwright and offline mode
+      - name: Build offline mode
         env: 
           VITE_OFFLINE_VERSION: true
         run: npm run build
-      - name: Push offline mode to master
+      - name: Push updated site and offline mode to master
         run: |  
           zip -r viralwasm-epi-offline.zip dist/ run_website.py
           git config --global user.name 'GitHub Actions'
