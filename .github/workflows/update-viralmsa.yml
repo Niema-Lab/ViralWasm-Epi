@@ -28,7 +28,7 @@ jobs:
         run: npm ci
       - name: Update ViralMSA
         run: |
-          cd e2e/tests/
+          cd scripts/
           bash update-viralmsa.sh
       - name: Build site for Playwright and offline mode
         env: 
