@@ -64,9 +64,8 @@ export class App extends Component {
 			done: false,
 			inputChanged: false,
 
-			viralMSADownloadResults: false,
-			biowasmDownloadResults: false,
 			downloadAlignment: false,
+			downloadAlignmentTrimmed: false,
 			downloadPairwise: false,
 			downloadTree: false,
 			downloadLSD2: false,
@@ -232,7 +231,7 @@ export class App extends Component {
 		const pyodide = this.state.pyodide;
 
 		// reset global variable
-		this.setState({ viralMSADownloadResults: false })
+		this.setState({ downloadAlignment: false })
 
 		await this.pyodideClearFiles();
 
@@ -260,7 +259,7 @@ export class App extends Component {
 		// after finished
 		this.log('\n', false)
 		this.log(`ViralMSA finished in ${((performance.now() - viralMSAStartTime) / 1000).toFixed(3)} seconds\n`)
-		this.setState({ viralMSADownloadResults: true, downloadAlignment: true })
+		this.setState({ downloadAlignment: true })
 
 		await this.pyodideClearFiles(false);
 	}
@@ -293,7 +292,6 @@ export class App extends Component {
 	// run minimap2 with provided command, sequences
 	runMinimap2 = async (command, inputSeq, refSeq, isGZIP) => {
 		const CLI = this.state.CLI;
-		this.setState({ biowasmDownloadResults: false })
 
 		await CLI.mount([{
 			name: "ref.fas",
@@ -563,7 +561,7 @@ export class App extends Component {
 		await this.biowasmClearFiles();
 		CLEAR_LOG();
 
-		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadPairwise: false, downloadTree: false, downloadLSD2: false, clusteringData: undefined })
+		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadAlignmentTrimmed: false, downloadPairwise: false, downloadTree: false, downloadLSD2: false, clusteringData: undefined })
 
 		let inputAln = undefined;
 		if (this.state.skipAlignment) {
@@ -577,13 +575,11 @@ export class App extends Component {
 			inputAln = this.runAlnTrim(inputAln);
 		}
 
-		if (this.state.performMolecularClustering || this.state.performPhyloInference || this.state.performLSD2) {
-			// mount alignment file
-			await this.state.CLI.mount([{
-				name: INPUT_ALN_FILE,
-				data: inputAln,
-			}]);
-		}
+		// mount (trimmed) alignment file
+		await this.state.CLI.mount([{
+			name: INPUT_ALN_FILE,
+			data: inputAln,
+		}]);
 
 		if (this.state.performMolecularClustering) {
 			await this.runTN93();
@@ -649,6 +645,8 @@ export class App extends Component {
 		let trimAln = "";
 		let currID = undefined;
 		let currSeq = undefined;
+
+		this.log("Trimming alignment file, " + this.state.trimSeqAlnStart + " bases from the start and " + this.state.trimSeqAlnEnd + " bases from the end...")
 		for (const line of inputAln.split("\n")) {
 			const l = line.trim();
 			if (l[0] === '>') {
@@ -670,6 +668,8 @@ export class App extends Component {
 		if (currID) {
 			trimAln += currID + "\n" + currSeq.substring(this.state.trimSeqAlnStart, currSeq.length - this.state.trimSeqAlnEnd) + "\n";
 		}
+		this.log("Alignment trimming finished!\n")
+		this.setState({ downloadAlignmentTrimmed: true })
 		return trimAln;
 	}
 
@@ -766,7 +766,7 @@ export class App extends Component {
 		await CLI.exec(command);
 		this.log(`tn93 finished in ${((performance.now() - TN93StartTime) / 1000).toFixed(3)} seconds`);
 
-		this.setState({ biowasmDownloadResults: true, downloadPairwise: true })
+		this.setState({ downloadPairwise: true })
 		this.runMolecularClustering(await CLI.fs.readFile(tn93OutputFile, { encoding: "utf8" }));
 	}
 
@@ -960,11 +960,7 @@ export class App extends Component {
 	}
 
 	downloadAlignment = () => {
-		if (!this.state.viralMSADownloadResults) {
-			return;
-		}
-
-		const downloads = [['sequence.fas.sam.aln', this.state.pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" })]]
+		const downloads = [['sequence.aln', this.state.pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" })]]
 
 		for (const download of downloads) {
 			// first element of array is filename, second element is content
@@ -972,11 +968,12 @@ export class App extends Component {
 		}
 	}
 
-	downloadPairwise = async () => {
-		if (!this.state.biowasmDownloadResults) {
-			return;
-		}
+	// note that only the trimmed alignment is saved to the biowasm filesystem
+	downloadAlignmentTrimmed = async () => {
+		this.downloadFile("sequence-trimmed.aln", await this.state.CLI.fs.readFile(INPUT_ALN_FILE, { encoding: "utf8" }));
+	}
 
+	downloadPairwise = async () => {
 		const downloads = [[this.state.tn93OutputFile, await this.state.CLI.fs.readFile(this.state.tn93OutputFile, { encoding: "utf8" })]]
 
 		for (const download of downloads) {
@@ -1346,6 +1343,9 @@ export class App extends Component {
 						<div id="download-buttons" className="mt-4">
 							{this.state.downloadAlignment &&
 								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadAlignment}>Download Alignment</button>
+							}
+							{this.state.downloadAlignmentTrimmed &&
+								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadAlignmentTrimmed}>Download Trimmed Alignment</button>
 							}
 							{this.state.downloadPairwise &&
 								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadPairwise}>Download Pairwise Distances</button>
