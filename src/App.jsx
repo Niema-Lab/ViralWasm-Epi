@@ -1,7 +1,5 @@
-// TODO: 300 seq timing out
-// TODO: speed up load time / run time
+// TODO: break on error add error messages 
 // TODO: incorporate gzip wherever and optimize memory usage
-// TODO: implement manual reinit
 import React, { Component, Fragment } from 'react'
 import { marked } from 'marked'
 import JSZip from 'jzip';
@@ -361,6 +359,14 @@ export class App extends Component {
 		this.setState(prevState => ({ omitRef: !prevState.omitRef, inputChanged: true }))
 	}
 
+	setTrimSeqAlnStart = (event) => {
+		this.setState({ trimSeqAlnStart: event.target.value, inputChanged: true, validTrimSeqAlnStart: event.target.value >= 0 && Number.isInteger(parseFloat(event.target.value)) })
+	}
+
+	setTrimSeqAlnEnd = (event) => {
+		this.setState({ trimSeqAlnEnd: event.target.value, inputChanged: true, validTrimSeqAlnEnd: event.target.value >= 0 && Number.isInteger(parseFloat(event.target.value)) })
+	}
+
 	setThreshold = (event) => {
 		this.setState({ threshold: event.target.value, inputChanged: true, validThreshold: event.target.value >= 0 && event.target.value <= 1, validClusterThreshold: this.state.clusterThreshold >= 0 && this.state.clusterThreshold <= 1 && this.state.clusterThreshold <= event.target.value })
 	}
@@ -567,6 +573,10 @@ export class App extends Component {
 			inputAln = pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" });
 		}
 
+		if (this.state.trimSeqAlnStart || this.state.trimSeqAlnEnd) {
+			inputAln = this.runAlnTrim(inputAln);
+		}
+
 		if (this.state.performMolecularClustering || this.state.performPhyloInference || this.state.performLSD2) {
 			// mount alignment file
 			await this.state.CLI.mount([{
@@ -633,6 +643,34 @@ export class App extends Component {
 			await this.biowasmClearFiles();
 			await this.pyodideRunViralMSA(samFileData, refSeq, this.state.omitRef);
 		}
+	}
+
+	runAlnTrim = (inputAln) => {
+		let trimAln = "";
+		let currID = undefined;
+		let currSeq = undefined;
+		for (const line of inputAln.split("\n")) {
+			const l = line.trim();
+			if (l[0] === '>') {
+				if (currID) {
+					trimAln += currID + "\n" + currSeq.substring(this.state.trimSeqAlnStart, currSeq.length - this.state.trimSeqAlnEnd) + "\n";
+				}
+				currID = l;
+				currSeq = "";
+			} else {
+				if (currSeq === undefined) {
+					// TODO: alert("Error: Invalid alignment file.");
+					this.log('\n', false);
+					this.log("Error when trimming alignment: Invalid alignment file.");
+					return;
+				}
+				currSeq += l;
+			}
+		}
+		if (currID) {
+			trimAln += currID + "\n" + currSeq.substring(this.state.trimSeqAlnStart, currSeq.length - this.state.trimSeqAlnEnd) + "\n";
+		}
+		return trimAln;
 	}
 
 	validTN93 = () => {
@@ -1110,6 +1148,12 @@ export class App extends Component {
 									</label>
 								</div>
 							</div>
+
+							<p className="mt-3 mb-2">Trim Alignment Columns From Start:</p>
+							<input type="number" className={`form-control ${!this.state.validTrimSeqAlnStart && 'is-invalid'}`} id="trim-seq-aln-start" placeholder="Default Columns: 0" min="0" value={this.state.trimSeqAlnStart} onInput={this.setTrimSeqAlnStart} />
+
+							<p className="mt-3 mb-2">Trim Alignment Columns From End:</p>
+							<input type="number" className={`form-control ${!this.state.validTrimSeqAlnEnd && 'is-invalid'}`} id="trim-seq-aln-end" placeholder="Default Columns: 0" min="0" value={this.state.trimSeqAlnEnd} onInput={this.setTrimSeqAlnEnd} />
 
 							<div className="form-check mt-5">
 								<input className="form-check-input" type="checkbox" id="molecular-clustering-check" data-testid="molecular-clustering-check" checked={this.state.performMolecularClustering} onChange={() => this.toggleMolecularClusteringArgs()} />

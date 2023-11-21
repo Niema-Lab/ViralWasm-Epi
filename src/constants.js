@@ -27,6 +27,10 @@ export const DEFAULT_INPUT_STATE = {
 	refFile: undefined,
 	validRefFile: true,
 	omitRef: false,
+	trimSeqAlnStart: 0,
+	validTrimSeqAlnStart: true,
+	trimSeqAlnEnd: 0,
+	validTrimSeqAlnEnd: true,
 
 	threshold: 1.0,
 	validThreshold: true,
