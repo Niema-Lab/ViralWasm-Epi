@@ -1147,13 +1147,13 @@ export class App extends Component {
 										Omit Reference Sequence from Output
 									</label>
 								</div>
+
+								<p className="mt-4 mb-2">Trim Alignment Columns From Start:</p>
+								<input type="number" className={`form-control ${!this.state.validTrimSeqAlnStart && 'is-invalid'}`} id="trim-seq-aln-start" placeholder="Default Columns: 0" min="0" value={this.state.trimSeqAlnStart} onInput={this.setTrimSeqAlnStart} />
+
+								<p className="mt-3 mb-2">Trim Alignment Columns From End:</p>
+								<input type="number" className={`form-control ${!this.state.validTrimSeqAlnEnd && 'is-invalid'}`} id="trim-seq-aln-end" placeholder="Default Columns: 0" min="0" value={this.state.trimSeqAlnEnd} onInput={this.setTrimSeqAlnEnd} />
 							</div>
-
-							<p className="mt-3 mb-2">Trim Alignment Columns From Start:</p>
-							<input type="number" className={`form-control ${!this.state.validTrimSeqAlnStart && 'is-invalid'}`} id="trim-seq-aln-start" placeholder="Default Columns: 0" min="0" value={this.state.trimSeqAlnStart} onInput={this.setTrimSeqAlnStart} />
-
-							<p className="mt-3 mb-2">Trim Alignment Columns From End:</p>
-							<input type="number" className={`form-control ${!this.state.validTrimSeqAlnEnd && 'is-invalid'}`} id="trim-seq-aln-end" placeholder="Default Columns: 0" min="0" value={this.state.trimSeqAlnEnd} onInput={this.setTrimSeqAlnEnd} />
 
 							<div className="form-check mt-5">
 								<input className="form-check-input" type="checkbox" id="molecular-clustering-check" data-testid="molecular-clustering-check" checked={this.state.performMolecularClustering} onChange={() => this.toggleMolecularClusteringArgs()} />
