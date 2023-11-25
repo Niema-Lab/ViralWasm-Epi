@@ -36,6 +36,12 @@ code {
 	width: 100% !important;
 }
 
+#output .form-control:disabled,
+.form-control[readonly] {
+	background-color: inherit;
+	opacity: 1;
+}
+
 #loading {
 	display: flex;
 	justify-content: center;

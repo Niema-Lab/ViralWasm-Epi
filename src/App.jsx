@@ -330,7 +330,7 @@ export class App extends Component {
 		// error checking
 		const properRun = (new RegExp(/mapped \d+ sequences/gm)).test(document.getElementById("output-console").value) &&
 			!(new RegExp(/failed to parse the FASTA\/FASTQ/gm)).test(document.getElementById("output-console").value);
-		const validOutFile = (await CLI.ls("./")).includes('sequence.fas.sam') && (await CLI.fs.stat("sequence.fas.sam")).size > 0;
+		const validOutFile = (await CLI.ls('sequence.fas.sam'))?.size > 0;
 		if (!properRun || !validOutFile) {
 			this.log('\n', false);
 			this.log(ERROR_MSG('minimap2'));
@@ -589,6 +589,7 @@ export class App extends Component {
 		});
 		await this.biowasmClearFiles();
 		CLEAR_LOG();
+		this.log("Starting job...");
 
 		this.setState({ running: true, done: false, errorMessage: undefined, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadAlignmentTrimmed: false, downloadPairwise: false, downloadTree: false, downloadLSD2: false, clusteringData: undefined })
 
@@ -797,7 +798,7 @@ export class App extends Component {
 		const TN93StartTime = performance.now();
 		await CLI.exec(command);
 		const properRun = (new RegExp(/Progress:     100%/gm)).test(document.getElementById("output-console").value);
-		const validOutFile = (await CLI.ls("./")).includes(tn93OutputFile) && (await CLI.fs.stat(tn93OutputFile)).size > 0;
+		const validOutFile = (await CLI.ls(tn93OutputFile))?.size > 0;
 		if (!properRun || !validOutFile) {
 			this.log('\n', false)
 			this.log(ERROR_MSG('tn93'));
@@ -1003,7 +1004,7 @@ export class App extends Component {
 		const LSD2StartTime = performance.now();
 		this.log((await CLI.exec(command)).stdout, false);
 		const properRun = (new RegExp(/TOTAL ELAPSED TIME: \d+\.\d+ seconds/gm)).test(document.getElementById("output-console").value);
-		const validOutFile = (await CLI.ls("./")).includes(FASTTREE_OUTPUT_FILE + ".result") && (await CLI.fs.stat(FASTTREE_OUTPUT_FILE + ".result")).size > 0;
+		const validOutFile = (await CLI.ls(FASTTREE_OUTPUT_FILE + ".result"))?.size > 0;
 		if (!properRun || !validOutFile) {
 			this.log('\n', false)
 			this.log(ERROR_MSG('LSD2'));
@@ -1388,7 +1389,7 @@ export class App extends Component {
 								<i className={`bi bi-${this.state.expandedContainer === 'output' ? 'arrows-angle-contract' : 'arrows-fullscreen'}`} onClick={() => this.toggleExpandContainer('output')}></i>
 							</h4>
 						</div>
-						<textarea className="form-control" id="output-console" data-testid="output-text" datarows="3" spellCheck="false"></textarea>
+						<textarea className="form-control" id="output-console" data-testid="output-text" datarows="3" spellCheck="false" disabled></textarea>
 						<div className="form-check my-3">
 							<input className="form-check-input mt-1" type="checkbox" id="output-autoscroll" checked={this.state.outputAutoscroll} onChange={this.toggleOutputAutoscroll} />
 							<label className="form-check-label ms-1" htmlFor="output-autoscroll">
