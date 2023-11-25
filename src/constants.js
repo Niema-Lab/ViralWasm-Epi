@@ -90,5 +90,5 @@ export const CLEAR_LOG = () => {
 
 export const GET_TIME_WITH_MILLISECONDS = (date) => {
 	const t = date.toLocaleTimeString();
-	return `${t.substring(0, 7)}.${("00" + date.getMilliseconds()).slice(-3)}`;
+	return `${t.substring(0, 8)}.${("00" + date.getMilliseconds()).slice(-3)}`;
 }
