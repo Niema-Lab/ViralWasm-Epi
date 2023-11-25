@@ -31,7 +31,8 @@ import {
 	FASTTREE_OUTPUT_FILE,
 	SED_VERSION,
 	SEQTK_VERSION,
-	INPUT_ALN_FILE
+	INPUT_ALN_FILE,
+	ERROR_MSG
 } from './constants.js';
 
 export class App extends Component {
@@ -62,6 +63,7 @@ export class App extends Component {
 			timeElapsed: undefined,
 			running: false,
 			done: false,
+			errorMessage: undefined,
 			inputChanged: false,
 
 			downloadAlignment: false,
@@ -254,7 +256,20 @@ export class App extends Component {
 
 		// run ViralMSAWeb.py
 		const viralMSAStartTime = performance.now();
-		pyodide.runPython(this.state.ViralMSAWeb);
+		try {
+			pyodide.runPython(this.state.ViralMSAWeb);
+		} catch (e) {
+			this.log(e.message, false)
+			this.log('\n', false)
+			this.log(ERROR_MSG('ViralMSA'));
+			throw new Error(ERROR_MSG('ViralMSA'));
+		}
+
+		if (!pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT).includes('output') || !pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + 'output').includes('sequence.fas.sam.aln') || pyodide.FS.stat(PATH_TO_PYODIDE_ROOT + 'output/sequence.fas.sam.aln').size === 0) {
+			this.log('\n', false)
+			this.log(ERROR_MSG('ViralMSA'));
+			throw new Error(ERROR_MSG('ViralMSA'));
+		}
 
 		// after finished
 		this.log('\n', false)
@@ -312,6 +327,16 @@ export class App extends Component {
 
 		const minimap2StartTime = performance.now();
 		this.log((await CLI.exec(command)).stderr, false);
+		// error checking
+		const properRun = (new RegExp(/mapped \d+ sequences/gm)).test(document.getElementById("output-console").value) &&
+			!(new RegExp(/failed to parse the FASTA\/FASTQ/gm)).test(document.getElementById("output-console").value);
+		const validOutFile = (await CLI.ls("./")).includes('sequence.fas.sam') && (await CLI.fs.stat("sequence.fas.sam")).size > 0;
+		if (!properRun || !validOutFile) {
+			this.log('\n', false);
+			this.log(ERROR_MSG('minimap2'));
+			throw new Error(ERROR_MSG('minimap2'));
+		}
+
 		this.log('\n', false);
 		this.log(`Minimap2 alignment finished in ${((performance.now() - minimap2StartTime) / 1000).toFixed(3)} seconds`)
 
@@ -533,7 +558,11 @@ export class App extends Component {
 			valid = false;
 		}
 
-		if (!this.state.useExampleInput && !this.state.preloadedRef && this.state.refFile === undefined) {
+		if (!this.state.skipAlignment && (!this.state.validTrimSeqAlnStart || !this.state.validTrimSeqAlnEnd)) {
+			valid = false;
+		}
+
+		if (!this.state.skipAlignment && !this.state.useExampleInput && !this.state.preloadedRef && this.state.refFile === undefined) {
 			this.setState({ validRefFile: false })
 			valid = false;
 		}
@@ -561,34 +590,38 @@ export class App extends Component {
 		await this.biowasmClearFiles();
 		CLEAR_LOG();
 
-		this.setState({ running: true, done: false, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadAlignmentTrimmed: false, downloadPairwise: false, downloadTree: false, downloadLSD2: false, clusteringData: undefined })
+		this.setState({ running: true, done: false, errorMessage: undefined, inputChanged: false, timeElapsed: undefined, startTime: new Date().getTime(), downloadAlignment: false, downloadAlignmentTrimmed: false, downloadPairwise: false, downloadTree: false, downloadLSD2: false, clusteringData: undefined })
 
-		let inputAln = undefined;
-		if (this.state.skipAlignment) {
-			inputAln = await this.fileReaderReadFile(this.state.inputFile);
-		} else {
-			await this.runViralMSA();
-			inputAln = pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" });
-		}
+		try {
+			let inputAln = undefined;
+			if (this.state.skipAlignment) {
+				inputAln = await this.fileReaderReadFile(this.state.inputFile);
+			} else {
+				await this.runViralMSA();
+				inputAln = pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/sequence.fas.sam.aln", { encoding: "utf8" });
+			}
 
-		if (this.state.trimSeqAlnStart || this.state.trimSeqAlnEnd) {
-			inputAln = this.runAlnTrim(inputAln);
-		}
+			if (this.state.trimSeqAlnStart || this.state.trimSeqAlnEnd) {
+				inputAln = this.runAlnTrim(inputAln);
+			}
 
-		// mount (trimmed) alignment file
-		await this.state.CLI.mount([{
-			name: INPUT_ALN_FILE,
-			data: inputAln,
-		}]);
+			// mount (trimmed) alignment file
+			await this.state.CLI.mount([{
+				name: INPUT_ALN_FILE,
+				data: inputAln,
+			}]);
 
-		if (this.state.performMolecularClustering) {
-			await this.runTN93();
-		}
-		if (this.state.performPhyloInference) {
-			await this.runFasttree();
-		}
-		if (this.state.performLSD2) {
-			await this.runLSD2();
+			if (this.state.performMolecularClustering) {
+				await this.runTN93();
+			}
+			if (this.state.performPhyloInference) {
+				await this.runFasttree();
+			}
+			if (this.state.performLSD2) {
+				await this.runLSD2();
+			}
+		} catch (e) {
+			this.setState({ errorMessage: e.message })
 		}
 		const timeElapsed = (new Date().getTime() - this.state.startTime) / 1000;
 		this.setState({ done: true, timeElapsed })
@@ -657,10 +690,9 @@ export class App extends Component {
 				currSeq = "";
 			} else {
 				if (currSeq === undefined) {
-					// TODO: alert("Error: Invalid alignment file.");
 					this.log('\n', false);
 					this.log("Error when trimming alignment: Invalid alignment file.");
-					return;
+					throw new Error("Error when trimming alignment: Invalid alignment file.");
 				}
 				currSeq += l;
 			}
@@ -764,6 +796,15 @@ export class App extends Component {
 		this.log('\nRunning command: ' + command + '\n\n', false)
 		const TN93StartTime = performance.now();
 		await CLI.exec(command);
+		const properRun = (new RegExp(/Progress:     100%/gm)).test(document.getElementById("output-console").value);
+		const validOutFile = (await CLI.ls("./")).includes(tn93OutputFile) && (await CLI.fs.stat(tn93OutputFile)).size > 0;
+		if (!properRun || !validOutFile) {
+			this.log('\n', false)
+			this.log(ERROR_MSG('tn93'));
+			throw new Error(ERROR_MSG('tn93'));
+		}
+
+		this.log('\n', false)
 		this.log(`tn93 finished in ${((performance.now() - TN93StartTime) / 1000).toFixed(3)} seconds`);
 
 		this.setState({ downloadPairwise: true })
@@ -869,6 +910,12 @@ export class App extends Component {
 		this.log('\nRunning command: ' + command + '\n\n', false)
 		const FastTreeStartTime = performance.now();
 		const output = await CLI.exec(command)
+		const properRun = (new RegExp(/Total time: \d+\.\d+ seconds/gm)).test(document.getElementById("output-console").value);
+		if (!properRun || output.stdout === "") {
+			this.log('\n', false)
+			this.log(ERROR_MSG('FastTree'));
+			throw new Error(ERROR_MSG('FastTree'));
+		}
 		CLI.mount([{
 			name: FASTTREE_OUTPUT_FILE,
 			data: output.stdout,
@@ -954,7 +1001,15 @@ export class App extends Component {
 
 		this.log('\nRunning command: ' + command + '\n', false)
 		const LSD2StartTime = performance.now();
-		await CLI.exec(command)
+		this.log((await CLI.exec(command)).stdout, false);
+		const properRun = (new RegExp(/TOTAL ELAPSED TIME: \d+\.\d+ seconds/gm)).test(document.getElementById("output-console").value);
+		const validOutFile = (await CLI.ls("./")).includes(FASTTREE_OUTPUT_FILE + ".result") && (await CLI.fs.stat(FASTTREE_OUTPUT_FILE + ".result")).size > 0;
+		if (!properRun || !validOutFile) {
+			this.log('\n', false)
+			this.log(ERROR_MSG('LSD2'));
+			throw new Error(ERROR_MSG('LSD2'));
+		}
+
 		this.log(`LSD2 finished in ${((performance.now() - LSD2StartTime) / 1000).toFixed(3)} seconds\n`);
 		this.setState({ downloadLSD2: true })
 	}
@@ -1340,27 +1395,30 @@ export class App extends Component {
 								Autoscroll with output
 							</label>
 						</div>
-						<div id="download-buttons" className="mt-4">
-							{this.state.downloadAlignment &&
-								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadAlignment}>Download Alignment</button>
-							}
-							{this.state.downloadAlignmentTrimmed &&
-								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadAlignmentTrimmed}>Download Trimmed Alignment</button>
-							}
-							{this.state.downloadPairwise &&
-								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadPairwise}>Download Pairwise Distances</button>
-							}
-							{this.state.clusteringData &&
-								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadClusters}>Download Clusters</button>
-							}
-							{this.state.downloadTree &&
-								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadTree}>Download Phylogenetic Tree</button>
-							}
-							{this.state.downloadLSD2 &&
-								<button type="button" className="btn btn-primary mt-3" onClick={this.downloadLSD2}>Download LSD2 Results</button>
-							}
-						</div>
-						<div id="duration" className="my-3">
+						{this.state.errorMessage && <div className="text-danger text-center mt-3">{this.state.errorMessage}</div>}
+						{(this.state.downloadAlignment || this.state.downloadAlignmentTrimmed || this.state.downloadPairwise || this.state.clusteringData || this.state.downloadTree || this.state.downloadLSD2) && this.state.done &&
+							<div id="download-buttons" className="mt-3">
+								{this.state.downloadAlignment &&
+									<button type="button" className="btn btn-primary mt-3" onClick={this.downloadAlignment}>Download Alignment</button>
+								}
+								{this.state.downloadAlignmentTrimmed &&
+									<button type="button" className="btn btn-primary mt-3" onClick={this.downloadAlignmentTrimmed}>Download Trimmed Alignment</button>
+								}
+								{this.state.downloadPairwise &&
+									<button type="button" className="btn btn-primary mt-3" onClick={this.downloadPairwise}>Download Pairwise Distances</button>
+								}
+								{this.state.clusteringData &&
+									<button type="button" className="btn btn-primary mt-3" onClick={this.downloadClusters}>Download Clusters</button>
+								}
+								{this.state.downloadTree &&
+									<button type="button" className="btn btn-primary mt-3" onClick={this.downloadTree}>Download Phylogenetic Tree</button>
+								}
+								{this.state.downloadLSD2 &&
+									<button type="button" className="btn btn-primary mt-3" onClick={this.downloadLSD2}>Download LSD2 Results</button>
+								}
+							</div>
+						}
+						<div id="duration" className="mt-4">
 							{this.state.timeElapsed &&
 								<p id="duration-text" data-testid="duration-text">Total runtime: {this.state.timeElapsed} seconds</p>
 							}
@@ -1372,7 +1430,7 @@ export class App extends Component {
 								</Fragment>
 							}
 						</div>
-						{this.state.done && this.state.inputChanged && <div className="text-danger text-center">Warning: Form input has been interacted with since last run, run again to ensure latest output files.</div>}
+						{this.state.done && this.state.inputChanged && <div className="text-warning text-center">Warning: Form input has been interacted with since last run, run again to ensure latest output files.</div>}
 					</div>
 				</div>
 				<footer className="d-flex w-100 justify-content-center">Source code:&nbsp;<a href="https://github.com/niema-lab/ViralWasm-Epi/" target="_blank" rel="noreferrer">github.com/niema-lab/ViralWasm-Epi</a>.<br /></footer>

@@ -17,6 +17,7 @@ export const EXAMPLE_PRELOADED_REF = "NC_001802";
 export const PATH_TO_PYODIDE_ROOT = "/home/pyodide/";
 export const INPUT_ALN_FILE = "input.aln";
 export const FASTTREE_OUTPUT_FILE = "phylogenetic.tree";
+
 export const DEFAULT_INPUT_STATE = {
 	useExampleInput: false,
 	inputFile: undefined,
@@ -77,6 +78,10 @@ export const DEFAULT_INPUT_STATE = {
 	validRateLowerBound: true,
 	LSD2Variance: "1",
 };
+
+export const ERROR_MSG = (tool) => {
+	return `Error running ${tool} as part of ViralWasm-Epi pipeline. Please check your input and try again.`;
+}
 
 export const CLEAR_LOG = () => {
 	const textArea = document.getElementById(OUTPUT_ID);
