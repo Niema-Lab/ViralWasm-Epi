@@ -1,5 +1,4 @@
-// TODO: break on error add error messages 
-// TODO: incorporate gzip wherever and optimize memory usage
+// TODO: incorporate gzip wherever (like output files) and optimize memory usage
 import React, { Component, Fragment } from 'react'
 import { marked } from 'marked'
 import JSZip from 'jzip';
