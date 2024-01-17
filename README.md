@@ -36,11 +36,11 @@ See https://biowasm.com/.
 
 See https://github.com/veg/tn93. 
 
-> Tamura, K., & Nei, M. (1993). Estimation of the number of nucleotide substitutions in the control region of mitochondrial DNA in humans and chimpanzees. Molecular biology and evolution, 10(3), 512–526. https://doi.org/10.1093/oxfordjournals.molbev.a040023
+> Tamura K, Nei M (1993). "Estimation of the number of nucleotide substitutions in the control region of mitochondrial DNA in humans and chimpanzees." *Molecular Biology and Evolution*. 10(3):512–526. [doi:10.1093/oxfordjournals.molbev.a040023](https://doi.org/10.1093/oxfordjournals.molbev.a040023)
 
 ### FastTree
 
-> Price MN, Dehal PS, Arkin AP (2010) FastTree 2 – Approximately Maximum-Likelihood Trees for Large Alignments. PLOS ONE 5(3): e9490. https://doi.org/10.1371/journal.pone.0009490
+> Price MN, Dehal PS, Arkin AP (2010). "FastTree 2 – Approximately Maximum-Likelihood Trees for Large Alignments." *PLOS ONE*. 5(3):e9490. [doi:10.1371/journal.pone.0009490](https://doi.org/10.1371/journal.pone.0009490)
 
 ### Seqtk
 
@@ -48,4 +48,4 @@ See https://github.com/lh3/seqtk.
 
 ### LSD2
 
-> "Fast dating using least-squares criteria and algorithms", T-H. To, M. Jung, S. Lycett, O. Gascuel, Syst Biol. 2016 Jan;65(1):82-97.
+> To TH, Jung M, Lycett S, Gascuel O (2016). "Fast dating using least-squares criteria and algorithms." *Systematic Biology*. 65(1):82–97. [doi:10.1093/sysbio/syv068](https://doi.org/10.1093/sysbio/syv068)
