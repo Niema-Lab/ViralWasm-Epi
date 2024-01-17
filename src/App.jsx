@@ -1433,7 +1433,12 @@ export class App extends Component {
 						{this.state.done && this.state.inputChanged && <div className="text-warning text-center">Warning: Form input has been interacted with since last run, run again to ensure latest output files.</div>}
 					</div>
 				</div>
-				<footer className="d-flex w-100 justify-content-center">Source code:&nbsp;<a href="https://github.com/niema-lab/ViralWasm-Epi/" target="_blank" rel="noreferrer">github.com/niema-lab/ViralWasm-Epi</a>.<br /></footer>
+				<footer className="w-100 text-center px-5">
+					Source code:&nbsp;<a href="https://github.com/niema-lab/ViralWasm-Epi/" target="_blank" rel="noreferrer">github.com/niema-lab/ViralWasm-Epi</a>.
+					<br /><br />
+					<span>Citation: Ji D, Aboukhalil R, Moshiri N (2023). "ViralWasm: a client-side user-friendly web application suite for viral genomics." <i>Bioinformatics</i>. btae018. <a href="https://doi.org/10.1093/bioinformatics/btae018" target="_blank" rel="noreferrer">doi:10.1093/bioinformatics/btae018</a></span>
+					<br />
+				</footer>
 
 				{
 					this.state.showOfflineInstructions &&
