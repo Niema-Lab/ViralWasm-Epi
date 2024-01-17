@@ -1,3 +1,4 @@
+export const PYODIDE_VERSION = "0.23.4";
 export const MINIMAP2_VERSION = "2.22";
 export const TN93_VERSION = "1.0.11";
 export const FASTTREE_VERSION = "2.1.11";

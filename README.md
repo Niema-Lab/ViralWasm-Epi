@@ -24,6 +24,10 @@ Please also cite the following tools used in ViralWasm-Epi:
 
 See https://biowasm.com/.
 
+### Pyodide
+
+See https://github.com/pyodide/pyodide.
+
 ### ViralMSA
 
 > Moshiri N (2021). "ViralMSA: massively scalable reference-guided multiple sequence alignment of viral genomes." *Bioinformatics*. 37(5):714–716. [doi:10.1093/bioinformatics/btaa743](https://doi.org/10.1093/bioinformatics/btaa743)
