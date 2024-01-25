@@ -1,7 +1,22 @@
 {
-  "sha": "aca5c5e7a448a8da989673429508a758b6cff78e",
-  "url": "https://api.github.com/repos/niemasd/ViralMSA/git/trees/aca5c5e7a448a8da989673429508a758b6cff78e",
+  "sha": "7ea6b642f33149d2d6753c70e1649fd17249bf31",
+  "url": "https://api.github.com/repos/niemasd/ViralMSA/git/trees/7ea6b642f33149d2d6753c70e1649fd17249bf31",
   "tree": [
+    {
+      "path": ".devcontainer",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4f1f82711eeffead23e551d21185caccbd6db115",
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/trees/4f1f82711eeffead23e551d21185caccbd6db115"
+    },
+    {
+      "path": ".devcontainer/devcontainer.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c588b7bdea771f8c573d4cbde25cf4657033a3a8",
+      "size": 55,
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/c588b7bdea771f8c573d4cbde25cf4657033a3a8"
+    },
     {
       "path": ".github",
       "mode": "040000",
@@ -44,9 +59,9 @@
       "path": "Dockerfile",
       "mode": "100644",
       "type": "blob",
-      "sha": "238e0bf26e86182af4c944b2e1deaff468d942ae",
-      "size": 3687,
-      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/238e0bf26e86182af4c944b2e1deaff468d942ae"
+      "sha": "af1281cef8656f44fc214008c65b2fe980e9d272",
+      "size": 4222,
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/af1281cef8656f44fc214008c65b2fe980e9d272"
     },
     {
       "path": "LICENSE",
@@ -60,17 +75,17 @@
       "path": "README.md",
       "mode": "100644",
       "type": "blob",
-      "sha": "02b95c45a1f8096a06eadaa7f7ca806ec89b18e9",
-      "size": 8909,
-      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/02b95c45a1f8096a06eadaa7f7ca806ec89b18e9"
+      "sha": "8081837eff3812a959d44933a36d5cdacd34809c",
+      "size": 11091,
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/8081837eff3812a959d44933a36d5cdacd34809c"
     },
     {
       "path": "ViralMSA.py",
       "mode": "100755",
       "type": "blob",
-      "sha": "d6bac2142c465b3141e5bb2d0f21f3a7d409946f",
-      "size": 51801,
-      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/d6bac2142c465b3141e5bb2d0f21f3a7d409946f"
+      "sha": "3ad6a52315a6ae875b44c4409caca57d518078bb",
+      "size": 57996,
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/3ad6a52315a6ae875b44c4409caca57d518078bb"
     },
     {
       "path": "example",
@@ -99,8 +114,8 @@
       "path": "ref_genomes",
       "mode": "040000",
       "type": "tree",
-      "sha": "1510574b6d7a9d4acbd5633db548cffa5c352a8f",
-      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/trees/1510574b6d7a9d4acbd5633db548cffa5c352a8f"
+      "sha": "6665faca66535e4109260005c9987863df662093",
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/trees/6665faca66535e4109260005c9987863df662093"
     },
     {
       "path": "ref_genomes/NC_001474",
@@ -170,6 +185,29 @@
       "sha": "a33ab35353e56d974cf55abac7d3d25ea40c2391",
       "size": 168528,
       "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/a33ab35353e56d974cf55abac7d3d25ea40c2391"
+    },
+    {
+      "path": "ref_genomes/NC_001498",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2bdaee6ec9132010e21c103f1c0397660bfafcb3",
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/trees/2bdaee6ec9132010e21c103f1c0397660bfafcb3"
+    },
+    {
+      "path": "ref_genomes/NC_001498/NC_001498.fas",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "60799218f7e8108debec408c01cca09b135ae8d4",
+      "size": 16167,
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/60799218f7e8108debec408c01cca09b135ae8d4"
+    },
+    {
+      "path": "ref_genomes/NC_001498/NC_001498.fas.mmi",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fff52e651cbbca26eeaa9c0ae1d45f4986a7ecc2",
+      "size": 186500,
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/fff52e651cbbca26eeaa9c0ae1d45f4986a7ecc2"
     },
     {
       "path": "ref_genomes/NC_001722",
@@ -635,8 +673,8 @@
       "path": "website",
       "mode": "040000",
       "type": "tree",
-      "sha": "d3855d92e44da50f98e3f1410488394ce800f2bf",
-      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/trees/d3855d92e44da50f98e3f1410488394ce800f2bf"
+      "sha": "ddad2c89069608e941d377bfdd85af36626b43c1",
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/trees/ddad2c89069608e941d377bfdd85af36626b43c1"
     },
     {
       "path": "website/.eslintrc.cjs",
@@ -666,17 +704,17 @@
       "path": "website/package-lock.json",
       "mode": "100644",
       "type": "blob",
-      "sha": "8032fc77a6054c0b5b69390c58d186117df9d0df",
+      "sha": "4f819506dafafa280b7833ef173cfd4886a946ce",
       "size": 130396,
-      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/8032fc77a6054c0b5b69390c58d186117df9d0df"
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/4f819506dafafa280b7833ef173cfd4886a946ce"
     },
     {
       "path": "website/package.json",
       "mode": "100644",
       "type": "blob",
-      "sha": "bf3d674bef665644df5098dc7e9c70b0826c9a63",
+      "sha": "e6dad8d1e40879d414bbbf5962d033dcea149eec",
       "size": 682,
-      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/bf3d674bef665644df5098dc7e9c70b0826c9a63"
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/e6dad8d1e40879d414bbbf5962d033dcea149eec"
     },
     {
       "path": "website/public",
@@ -705,16 +743,16 @@
       "path": "website/src",
       "mode": "040000",
       "type": "tree",
-      "sha": "08577367733532f2f27bc11ba49a8d24bc5add0a",
-      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/trees/08577367733532f2f27bc11ba49a8d24bc5add0a"
+      "sha": "4da39f43011a661cd673aabdb72c5233d4781660",
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/trees/4da39f43011a661cd673aabdb72c5233d4781660"
     },
     {
       "path": "website/src/App.jsx",
       "mode": "100644",
       "type": "blob",
-      "sha": "9903717a8f03117611752334b8eea7010f7ca982",
-      "size": 13225,
-      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/9903717a8f03117611752334b8eea7010f7ca982"
+      "sha": "f7edefb5ef74fa93fa0629ca340aa167d5d093d4",
+      "size": 13400,
+      "url": "https://api.github.com/repos/niemasd/ViralMSA/git/blobs/f7edefb5ef74fa93fa0629ca340aa167d5d093d4"
     },
     {
       "path": "website/src/App.scss",
