@@ -34,7 +34,7 @@ jobs:
         env: 
           VITE_OFFLINE_VERSION: true
         run: npm run build
-      - name: Push updated site and offline mode to master
+      - name: Push updated ViralMSA script and offline mode to master
         run: |  
           zip -r viralwasm-epi-offline.zip dist/ run_website.py
           git config --global user.name 'GitHub Actions'
@@ -47,7 +47,7 @@ jobs:
             echo "No changes to commit"
           else
             # Changes detected
-            git commit -m "Add offline mode zip"
+            git commit -m "Add updated ViralMSA script and offline mode zip"
             git push origin master
           fi
       - name: Build for github pages
