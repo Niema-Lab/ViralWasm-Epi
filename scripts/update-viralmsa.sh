@@ -12,10 +12,9 @@ wget https://raw.githubusercontent.com/niemasd/ViralMSA/master/ViralMSA.py
 # update data
 cd $CUR_DIR
 cd $VIRALMSA_DATA_DIR
-rm -rf repo_structure.json
-wget https://api.github.com/repos/niemasd/ViralMSA/git/trees/master?recursive=1 -O repo_structure.json
-cd ref_genomes
-rm -rf *
-
-curl https://codeload.github.com/niemasd/ViralMSA/tar.gz/master |
-	tar -xz --strip=2 ViralMSA-master/ref_genomes
+rm -rf Reference-Genomes/
+git clone https://github.com/Niema-Lab/Reference-Genomes.git
+cd Reference-Genomes
+rm -rf *.github/
+python3 compile.py
+mv REFS.json ../REFS.json

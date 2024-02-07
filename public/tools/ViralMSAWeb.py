@@ -1,9 +1,6 @@
 #! /usr/bin/env python3
 import ViralMSA
 
-# for retrieving REFS and REF_NAMES from ViralMSA for preloading indexes in web implementation
-REFS = ViralMSA.REFS
-REF_NAMES = ViralMSA.REF_NAMES
 VERSION = ViralMSA.VERSION
 
 # override to ensure that ViralMSA sanity check for minimap2 passes for web implementation

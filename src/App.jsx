@@ -43,10 +43,8 @@ export class App extends Component {
 			showOfflineInstructions: false,
 			offlineInstructions: undefined,
 			REFS: undefined,
-			REF_NAMES: undefined,
 			viralMSAVersion: undefined,
 			ViralMSAWeb: undefined,
-			refGenomes: new Set(),
 			exampleInput: undefined,
 			preloadRefOptions: undefined,
 
@@ -84,7 +82,6 @@ export class App extends Component {
 
 		// Other initialization
 		this.disableNumberInputScroll();
-		this.fetchPreloadedRef();
 		this.initPreloadedRefs();
 		this.fetchExampleInput();
 		this.fetchOfflineInstructions();
@@ -156,12 +153,10 @@ export class App extends Component {
 		// load in ViralMSAWeb.py
 		const ViralMSAWeb = await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_WEB_LINK}`)).text()
 
-		// get REFS and REF_NAMES for preloaded reference sequences and indexes
 		pyodide.runPython(ViralMSAWeb)
-		const REFS = pyodide.globals.get('REFS').toJs()
-		const REF_NAMES = pyodide.globals.get('REF_NAMES').toJs()
+		const REFS = await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_REPO_STRUCTURE_LINK}`)).json();
 		// done loading pyodide / ViralMSA 
-		this.setState({ ViralMSAWeb, REFS, REF_NAMES, viralMSAVersion: ' v' + pyodide.globals.get('VERSION'), siteReady: true })
+		this.setState({ ViralMSAWeb, REFS, viralMSAVersion: ' v' + pyodide.globals.get('VERSION'), siteReady: true })
 		this.log("ViralMSA loaded.")
 	}
 
@@ -173,37 +168,14 @@ export class App extends Component {
 		});
 	}
 
-	fetchPreloadedRef = async () => {
-		const res = await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_REPO_STRUCTURE_LINK}`);
-		const json = await res.json();
-		const refGenomes = new Set();
-		for (const file of json.tree) {
-			if (file.path.startsWith("ref_genomes/")) {
-				refGenomes.add(file.path.split("/")[1]);
-			}
-		}
-		this.setState({ refGenomes });
-	}
-
 	initPreloadedRefs = () => {
 		const preloadRefInterval = setInterval(() => {
-			if (this.state.REFS && this.state.REF_NAMES && this.state.refGenomes.size > 0) {
+			if (this.state.REFS) {
 				clearInterval(preloadRefInterval);
-				const preloadRefOptions = [];
-				const preloadRefOptionsUniqueNames = new Set();
-				for (const REF_NAME_MAP of this.state.REF_NAMES) {
-					const REF_NAME_MAP_TYPE = [...REF_NAME_MAP[1]]
-					for (const REF_NAME of REF_NAME_MAP_TYPE) {
-						const virus = REF_NAME[0];
-						const commonName = REF_NAME[1];
-						if(!preloadRefOptionsUniqueNames.has(commonName)) {
-							preloadRefOptionsUniqueNames.add(commonName);
-							preloadRefOptions.push(
-								<option value={this.state.REFS.get(virus)} key={commonName}>{commonName}</option>
-							)
-						}
-					}
-				}
+
+				const preloadRefOptions = Object.entries(this.state.REFS).map(arr =>
+					<option value={arr[0]} key={arr[1].name}>{arr[1].name}</option>
+				)
 
 				preloadRefOptions.sort((a, b) => a.key.localeCompare(b.key));
 				this.setState({ preloadRefOptions })
