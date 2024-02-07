@@ -1,0 +1,4 @@
+sc2
+sarscov2
+covid
+covid19
