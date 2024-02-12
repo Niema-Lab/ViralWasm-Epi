@@ -22,7 +22,7 @@
     "sass": "^1.64.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.38.1",
+    "@playwright/test": "^1.41.2",
     "@types/react": "^18.2.53",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
