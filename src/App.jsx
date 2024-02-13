@@ -42,7 +42,6 @@ export class App extends Component {
 		this.state = {
 			showOfflineInstructions: false,
 			offlineInstructions: undefined,
-			REFS: undefined,
 			viralMSAVersion: undefined,
 			ViralMSAWeb: undefined,
 			exampleInput: undefined,
@@ -154,9 +153,8 @@ export class App extends Component {
 		const ViralMSAWeb = await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_WEB_LINK}`)).text()
 
 		pyodide.runPython(ViralMSAWeb)
-		const REFS = await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_REPO_STRUCTURE_LINK}`)).json();
 		// done loading pyodide / ViralMSA 
-		this.setState({ ViralMSAWeb, REFS, viralMSAVersion: ' v' + pyodide.globals.get('VERSION'), siteReady: true })
+		this.setState({ ViralMSAWeb, viralMSAVersion: ' v' + pyodide.globals.get('VERSION'), siteReady: true })
 		this.log("ViralMSA loaded.")
 	}
 
@@ -168,19 +166,14 @@ export class App extends Component {
 		});
 	}
 
-	initPreloadedRefs = () => {
-		const preloadRefInterval = setInterval(() => {
-			if (this.state.REFS) {
-				clearInterval(preloadRefInterval);
+	initPreloadedRefs = async () => {
+		const REFS = await (await fetch(`${import.meta.env.BASE_URL || ''}${VIRAL_MSA_REPO_STRUCTURE_LINK}`)).json();
+		const preloadRefOptions = Object.entries(REFS).map(arr =>
+			<option value={arr[0]} key={arr[1].name}>{arr[1].name}</option>
+		)
 
-				const preloadRefOptions = Object.entries(this.state.REFS).map(arr =>
-					<option value={arr[0]} key={arr[1].name}>{arr[1].name}</option>
-				)
-
-				preloadRefOptions.sort((a, b) => a.key.localeCompare(b.key));
-				this.setState({ preloadRefOptions })
-			}
-		}, 250)
+		preloadRefOptions.sort((a, b) => a.key.localeCompare(b.key));
+		this.setState({ preloadRefOptions })
 	}
 
 	fetchExampleInput = async () => {
