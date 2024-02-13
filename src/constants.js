@@ -8,7 +8,8 @@ export const SEQTK_VERSION = "1.4";
 
 export const OUTPUT_ID = "output-console";
 export const OFFLINE_INSTRUCTIONS = "/README.md";
-export const OFFLINE_INSTRUCTIONS_KEYWORDS = "<h3>ViralWasm-Epi Offline</h3>\n";
+export const OFFLINE_INSTRUCTIONS_KEYWORDS_START = "<h2>ViralWasm-Epi Offline</h2>\n";
+export const OFFLINE_INSTRUCTIONS_KEYWORDS_END = "<h2>Citing ViralWasm-Epi</h2>\n";
 export const VIRAL_MSA_LINK = "tools/ViralMSA.py";
 export const VIRAL_MSA_WEB_LINK = "tools/ViralMSAWeb.py";
 export const VIRAL_MSA_REPO_STRUCTURE_LINK = "data/REFS.json";

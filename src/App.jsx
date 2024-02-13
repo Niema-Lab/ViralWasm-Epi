@@ -14,7 +14,8 @@ import {
 	CLEAR_LOG,
 	GET_TIME_WITH_MILLISECONDS,
 	OFFLINE_INSTRUCTIONS,
-	OFFLINE_INSTRUCTIONS_KEYWORDS,
+	OFFLINE_INSTRUCTIONS_KEYWORDS_START,
+	OFFLINE_INSTRUCTIONS_KEYWORDS_END,
 	VIRAL_MSA_REPO_STRUCTURE_LINK,
 	EXAMPLE_INPUT_FILE,
 	EXAMPLE_PRELOADED_REF,
@@ -186,7 +187,9 @@ export class App extends Component {
 		const res = await fetch(`${window.location.origin}${import.meta.env.BASE_URL || ''}${OFFLINE_INSTRUCTIONS}`);
 		const text = await res.text();
 		const html = marked(text);
-		const offlineInstructions = html.slice(html.indexOf(OFFLINE_INSTRUCTIONS_KEYWORDS) + OFFLINE_INSTRUCTIONS_KEYWORDS.length)
+		let offlineInstructions = html.slice(html.indexOf(OFFLINE_INSTRUCTIONS_KEYWORDS_START) + OFFLINE_INSTRUCTIONS_KEYWORDS_START.length)
+		console.log(offlineInstructions)
+		offlineInstructions = offlineInstructions.slice(0, offlineInstructions.indexOf(OFFLINE_INSTRUCTIONS_KEYWORDS_END))
 		this.setState({ offlineInstructions });
 	}
 
