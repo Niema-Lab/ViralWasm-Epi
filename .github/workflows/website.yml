@@ -45,7 +45,7 @@ jobs:
             ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
       - run: npx playwright install --with-deps
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        if: steps.playwright-cache.outputs.cache-hit != 'true' || env.PLAYWRIGHT_VERSION != steps.playwright-version.outputs.PLAYWRIGHT_VERSION
       - run: npx playwright install-deps
         if: steps.playwright-cache.outputs.cache-hit == 'true'
       - name: Run Playwright deployment tests
