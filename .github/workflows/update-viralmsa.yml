@@ -35,7 +35,7 @@ jobs:
         run: npm run build
       - name: Push updated ViralMSA script and offline mode to master
         run: |  
-          zip -r viralwasm-epi-offline.zip dist/ run_website.py
+          zip -9 -r viralwasm-epi-offline.zip dist/ run_website.py
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'action@github.com'
           git add .

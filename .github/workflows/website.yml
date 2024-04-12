@@ -52,7 +52,7 @@ jobs:
         run: npx playwright test site-tests.spec.ts
       - name: Push offline mode to master
         run: |  
-          zip -r viralwasm-epi-offline.zip dist/ run_website.py
+          zip -9 -r viralwasm-epi-offline.zip dist/ run_website.py
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'action@github.com'
           git add viralwasm-epi-offline.zip
