@@ -12,7 +12,7 @@
     "host-dev": "http-server dist/ -p 8000 -c-1"
   },
   "dependencies": {
-    "bootstrap": "^5.3.2",
+    "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.11.3",
     "jzip": "^1.0.0",
     "marked": "^9.0.0",
