@@ -58,11 +58,11 @@ jobs:
         run: |
           cd e2e/tests/
           bash benchmark-summary.sh
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: benchmarks
           path: benchmarks/
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: benchmark-run-outputs
           path: benchmark-run-outputs/
