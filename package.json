@@ -18,7 +18,7 @@
     "marked": "^16.1.1",
     "pyodide": "^0.28.0",
     "react": "^19.1.1",
-    "react-dom": "^19.1.0",
+    "react-dom": "^19.1.1",
     "sass": "^1.89.2"
   },
   "devDependencies": {
