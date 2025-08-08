@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Reference Genomes</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 1em;
+    }
+
+    #pageTop {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1em;
+      font-family: monospace;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5em;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f2f2f2;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    th.sort-asc::after {
+      content: " ▲";
+    }
+
+    th.sort-desc::after {
+      content: " ▼";
+    }
+
+    a {
+      color: #0645ad;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+<div id="pageTop">
+  <div id="headerRow">
+    <h1 style="margin: 0;">Reference Genomes</h1>
+  </div>
+  <div id="subtitleRow">
+    <a href="https://github.com/Niema-Lab/Reference-Genomes" target="_blank">https://github.com/Niema-Lab/Reference-Genomes</a>
+  </div>
+</div>
+
+<table id="refTable">
+  <thead>
+    <tr>
+      <th data-column="id">ID</th>
+      <th data-column="name">Name</th>
+      <th data-column="shortname">Short-Name(s)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- Rows will be populated by JavaScript -->
+  </tbody>
+</table>
+
+<script>
+  const githubUrl = "https://github.com/Niema-Lab/Reference-Genomes/releases/latest/download/REFS.json";
+  const corsProxyUrl = "https://corsproxy.io/?" + encodeURIComponent(githubUrl);
+  let currentSort = { column: "name", ascending: true };
+
+  function sortTable(data, column, ascending) {
+    return data.sort((a, b) => {
+      const valA = a[column].toLowerCase ? a[column].toLowerCase() : a[column];
+      const valB = b[column].toLowerCase ? b[column].toLowerCase() : b[column];
+      if (valA < valB) return ascending ? -1 : 1;
+      if (valA > valB) return ascending ? 1 : -1;
+      return 0;
+    });
+  }
+
+  function renderTable(data) {
+    const tbody = document.querySelector("#refTable tbody");
+    tbody.innerHTML = "";
+    data.forEach(row => {
+      const tr = document.createElement("tr");
+
+      const idTd = document.createElement("td");
+      const link = document.createElement("a");
+      link.href = `https://github.com/Niema-Lab/Reference-Genomes/tree/main/${row.id}`;
+      link.textContent = row.id;
+      link.target = "_blank";
+      idTd.appendChild(link);
+
+      const nameTd = document.createElement("td");
+      nameTd.textContent = row.name;
+
+      const shortnameTd = document.createElement("td");
+      shortnameTd.textContent = row.shortname.join(", ");
+
+      tr.appendChild(idTd);
+      tr.appendChild(nameTd);
+      tr.appendChild(shortnameTd);
+      tbody.appendChild(tr);
+    });
+  }
+
+  function updateSortIndicators(column, ascending) {
+    document.querySelectorAll("#refTable th").forEach(th => {
+      th.classList.remove("sort-asc", "sort-desc");
+      if (th.dataset.column === column) {
+        th.classList.add(ascending ? "sort-asc" : "sort-desc");
+      }
+    });
+  }
+
+  fetch(corsProxyUrl)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch JSON: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(rawData => {
+      const data = Object.entries(rawData).map(([id, info]) => ({
+        id,
+        name: info.name || "",
+        shortname: info.shortname || []
+      }));
+
+      // Initial sort by "name"
+      const sorted = sortTable(data, "name", true);
+      renderTable(sorted);
+      updateSortIndicators("name", true);
+
+      document.querySelectorAll("#refTable th").forEach(th => {
+        th.addEventListener("click", () => {
+          const column = th.dataset.column;
+          const isSameColumn = currentSort.column === column;
+          const ascending = isSameColumn ? !currentSort.ascending : true;
+
+          const sortedData = sortTable(data, column, ascending);
+          renderTable(sortedData);
+          updateSortIndicators(column, ascending);
+          currentSort = { column, ascending };
+        });
+      });
+    })
+    .catch(error => {
+      const tbody = document.querySelector("#refTable tbody");
+      tbody.innerHTML = `<tr><td colspan="3" style="color:red;">Error: ${error.message}</td></tr>`;
+      console.error("Error loading JSON:", error);
+    });
+</script>
+
+</body>
+</html>
