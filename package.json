@@ -17,13 +17,13 @@
     "jzip": "^1.0.0",
     "marked": "^16.3.0",
     "pyodide": "^0.28.3",
-    "react": "^19.1.1",
+    "react": "^19.2.0",
     "react-dom": "^19.1.1",
     "sass": "^1.93.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
-    "@types/react": "^19.1.15",
+    "@types/react": "^19.2.0",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.4",
     "eslint": "^9.37.0",
