@@ -188,7 +188,6 @@ export class App extends Component {
 		const text = await res.text();
 		const html = marked(text);
 		let offlineInstructions = html.slice(html.indexOf(OFFLINE_INSTRUCTIONS_KEYWORDS_START) + OFFLINE_INSTRUCTIONS_KEYWORDS_START.length)
-		console.log(offlineInstructions)
 		offlineInstructions = offlineInstructions.slice(0, offlineInstructions.indexOf(OFFLINE_INSTRUCTIONS_KEYWORDS_END))
 		this.setState({ offlineInstructions });
 	}

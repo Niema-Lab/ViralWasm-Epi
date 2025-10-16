@@ -1,11 +1,9 @@
 name: update ViralMSA
 
 on:
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-  # Allows you to run this workflow every Tuesday and Friday at 12:12 UTC
   schedule:
-    - cron: '12 12 * * 2,5'
+    - cron: "12 12 1,15 * *"
 
 # Sets the GITHUB_TOKEN permissions to allow deployment to GitHub Pages
 permissions:
@@ -15,7 +13,7 @@ permissions:
 
 # Allow one concurrent deployment
 concurrency:
-  group: 'update-viralmsa'
+  group: "update-viralmsa"
   cancel-in-progress: true
 
 jobs:
@@ -30,11 +28,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Build offline mode
-        env: 
+        env:
           VITE_OFFLINE_VERSION: true
         run: npm run build
       - name: Push updated ViralMSA script and offline mode to master
-        run: |  
+        run: |
           zip -9 -r viralwasm-epi-offline.zip dist/ run_website.py
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'action@github.com'
@@ -57,7 +55,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload dist repository
-          path: './dist'
+          path: "./dist"
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
