@@ -15,7 +15,7 @@
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
     "jzip": "^1.0.0",
-    "marked": "^16.3.0",
+    "marked": "^16.4.1",
     "pyodide": "^0.28.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
