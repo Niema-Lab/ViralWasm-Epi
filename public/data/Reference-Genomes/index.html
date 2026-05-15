@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference Genomes - Niema Lab</title>
+<style>
+body { font-family: monospace; margin: 2rem; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; vertical-align: top; }
+th { background: #f6f8fa; cursor: pointer; user-select: none; }
+tr:nth-child(even) { background: #fafafa; }
+.sort-arrow { margin-left: 0.4rem; }
+</style>
+<script>
+function sortTable(columnIndex) {
+    var table = document.getElementById("refs-table");
+    var tbody = table.tBodies[0];
+    var rows = Array.prototype.slice.call(tbody.rows);
+    var headers = table.tHead.rows[0].cells;
+    var currentColumn = table.getAttribute("data-sort-column");
+    var currentDirection = table.getAttribute("data-sort-direction");
+    var direction = "asc";
+    if (currentColumn == columnIndex && currentDirection == "asc") {
+        direction = "desc";
+    }
+    rows.sort(function(a, b) {
+        var aText = a.cells[columnIndex].innerText.trim().toLowerCase();
+        var bText = b.cells[columnIndex].innerText.trim().toLowerCase();
+        if (aText < bText) return direction === "asc" ? -1 : 1;
+        if (aText > bText) return direction === "asc" ? 1 : -1;
+        return 0;
+    });
+    rows.forEach(function(row) {
+        tbody.appendChild(row);
+    });
+    for (var i = 0; i < headers.length; i++) {
+        var arrow = headers[i].querySelector(".sort-arrow");
+        if (arrow) {
+            arrow.innerText = "";
+        }
+    }
+    var selectedArrow = headers[columnIndex].querySelector(".sort-arrow");
+    selectedArrow.innerText = direction === "asc" ? "▲" : "▼";
+    table.setAttribute("data-sort-column", columnIndex);
+    table.setAttribute("data-sort-direction", direction);
+}
+window.onload = function() {
+    sortTable(1);
+};
+</script>
+</head>
+<body>
+<h1><a href="https://github.com/Niema-Lab/Reference-Genomes" target="_blank">Reference Genomes</a></h1>
+<table id="refs-table">
+<thead>
+<tr>
+<th onclick="sortTable(0)">ID<span class="sort-arrow"></span></th>
+<th onclick="sortTable(1)">Name<span class="sort-arrow"></span></th>
+<th onclick="sortTable(2)">Short Name(s)<span class="sort-arrow"></span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_001474" target="_blank">NC_001474</a></td>
+<td>Dengue Virus 2</td>
+<td>denv2, dengue2, denguevirus2</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_001475" target="_blank">NC_001475</a></td>
+<td>Dengue Virus 3</td>
+<td>denv3, dengue3, denguevirus3</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_001477" target="_blank">NC_001477</a></td>
+<td>Dengue Virus 1</td>
+<td>denv1, dengue1, denguevirus1</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_001498" target="_blank">NC_001498</a></td>
+<td>Measles Virus (Measles morbillivirus)</td>
+<td>measles, measlesvirus, measlesmorbillivirus</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_001722" target="_blank">NC_001722</a></td>
+<td>HIV-2</td>
+<td>hiv2</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_001781" target="_blank">NC_001781</a></td>
+<td>HRSV-B</td>
+<td>hrsvb, rsvb</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_001802" target="_blank">NC_001802</a></td>
+<td>HIV-1</td>
+<td>hiv1</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_002549" target="_blank">NC_002549</a></td>
+<td>Ebola Virus (Zaire ebolavirus)</td>
+<td>ebola, ebolavirus, zaire, zaireebola, zaireebolavirus</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_002640" target="_blank">NC_002640</a></td>
+<td>Dengue Virus 4</td>
+<td>denv4, dengue4, denguevirus4</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_003466" target="_blank">NC_003466</a></td>
+<td>Andes Virus Segment S</td>
+<td>andess, andessegments, andesviruss, andesvirussegments, andvs, andvsegments</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_003467" target="_blank">NC_003467</a></td>
+<td>Andes Virus Segment M</td>
+<td>andesm, andessegmentm, andesvirusm, andesvirussegmentm, andvm, andvsegmentm</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_003468" target="_blank">NC_003468</a></td>
+<td>Andes Virus Segment L</td>
+<td>andesl, andessegmentl, andesvirusl, andesvirussegmentl, andvl, andvsegmentl</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_004102" target="_blank">NC_004102</a></td>
+<td>HCV genotype 1</td>
+<td>hcv1</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_004161" target="_blank">NC_004161</a></td>
+<td>Reston Virus (Reston ebolavirus)</td>
+<td>reston, restonvirus, restonebola, restonebolavirus</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_004162" target="_blank">NC_004162</a></td>
+<td>Chikungunya Virus</td>
+<td>chikv, chikungunya, chikungunyavirus</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_006432" target="_blank">NC_006432</a></td>
+<td>Sudan Virus (Sudan ebolavirus)</td>
+<td>sudan, sudanvirus, sudanebola, sudanebolavirus</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_009823" target="_blank">NC_009823</a></td>
+<td>HCV genotype 2</td>
+<td>hcv2</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_009824" target="_blank">NC_009824</a></td>
+<td>HCV genotype 3</td>
+<td>hcv3</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_009825" target="_blank">NC_009825</a></td>
+<td>HCV genotype 4</td>
+<td>hcv4</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_009826" target="_blank">NC_009826</a></td>
+<td>HCV genotype 5</td>
+<td>hcv5</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_009827" target="_blank">NC_009827</a></td>
+<td>HCV genotype 6</td>
+<td>hcv6</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_014372" target="_blank">NC_014372</a></td>
+<td>Tai Forest Virus (Tai Forest ebolavirus, Cote d&#x27;Ivoire ebolavirus)</td>
+<td>taiforest, taiforestvirus, taiforestebola, taiforestebolavirus, cotedivoire, cotedivoirevirus, cotedivoireebola, cotedivoireebolavirus</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_014373" target="_blank">NC_014373</a></td>
+<td>Bundibugyo Virus (Bundibugyo ebolavirus)</td>
+<td>bundibugyo, bundibugyovirus</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_030791" target="_blank">NC_030791</a></td>
+<td>HCV genotype 7</td>
+<td>hcv7</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_038235" target="_blank">NC_038235</a></td>
+<td>HRSV-A</td>
+<td>hrsva, rsva</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_038882" target="_blank">NC_038882</a></td>
+<td>HCV genotpye 1 (isolate H77)</td>
+<td>hcv1h77</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_039199" target="_blank">NC_039199</a></td>
+<td>Human Metapneumovirus</td>
+<td>hmpv, humanmetapneumovirus, metapneumovirus</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_039345" target="_blank">NC_039345</a></td>
+<td>Bombali Virus (Bombali ebolavirus)</td>
+<td>bombali, bombalivirus</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_045512" target="_blank">NC_045512</a></td>
+<td>SARS-CoV-2 (COVID-19)</td>
+<td>sc2, sarscov2, covid, covid19</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Niema-Lab/Reference-Genomes/tree/main/NC_063383" target="_blank">NC_063383</a></td>
+<td>Mpox Virus</td>
+<td>mpox, mpoxvirus, monkeypox, monkeypoxvirus</td>
+</tr>
+</tbody>
+</table>
+</body>
+<footer>
+<p style="text-align: center;"><a href="https://niema.net" target="_blank">Niema Moshiri</a></p>
+</footer>
+</html>
