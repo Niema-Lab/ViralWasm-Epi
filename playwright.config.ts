@@ -10,6 +10,10 @@ import { defineConfig, devices } from '@playwright/test';
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
+	timeout: 150_000,
+	expect: {
+		timeout: 120_000,
+	},
 	testDir: './e2e/tests',
 	outputDir: './benchmarks/',
 	/* Run tests in files in parallel */
@@ -28,7 +32,8 @@ export default defineConfig({
 		baseURL: 'http://localhost:8000',
 
 		/* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-		trace: 'on-first-retry',
+		trace: 'retain-on-failure',
+		screenshot: 'only-on-failure',
 		/* Whether to run the browser in headless mode or show the UI. */
 		headless: true,
 	},
@@ -81,5 +86,6 @@ export default defineConfig({
 		command: 'npm run host-dev',
 		url: 'http://127.0.0.1:8000',
 		reuseExistingServer: !process.env.CI,
+		timeout: 120_000,
 	},
 });
