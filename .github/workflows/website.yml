@@ -22,34 +22,33 @@ concurrency:
 jobs:
   deploy:
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: 25
+          node-version: 24
+          cache: npm
       - name: Install dependencies
         run: npm ci
       - name: Build site for Playwright and offline mode
         env: 
-          VITE_OFFLINE_VERSION: true
+          VITE_OFFLINE_VERSION: 'true'
         run: npm run build
-      - name: Get installed Playwright version
-        id: playwright-version
-        run: echo "PLAYWRIGHT_VERSION=$(node -e "console.log(require('./package.json').devDependencies['@playwright/test'])")" >> $GITHUB_ENV
-      - name: Cache Playwright binaries
-        uses: actions/cache@v3
-        id: playwright-cache
-        with:
-          path: |
-            ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
-      - run: npx playwright install --with-deps
-        if: steps.playwright-cache.outputs.cache-hit != 'true' || env.PLAYWRIGHT_VERSION != steps.playwright-version.outputs.PLAYWRIGHT_VERSION
-      - run: npx playwright install-deps
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
       - name: Run Playwright deployment tests
-        run: npx playwright test site-tests.spec.ts
+        run: npx playwright test e2e/tests/site-tests.spec.ts
+      - name: Upload Playwright diagnostics
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-diagnostics
+          path: |
+            benchmarks/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Push offline mode to master
         run: |  
           zip -9 -r viralwasm-epi-offline.zip dist/ run_website.py
