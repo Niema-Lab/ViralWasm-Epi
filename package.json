@@ -17,8 +17,8 @@
     "jzip": "^1.0.0",
     "marked": "^18.0.7",
     "pyodide": "^314.0.2",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.7",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "sass": "^1.102.0"
   },
   "devDependencies": {
