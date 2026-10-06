@@ -19,7 +19,7 @@
     "pyodide": "^314.0.7",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "sass": "^1.105.0"
+    "sass": "^1.105.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
